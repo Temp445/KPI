@@ -27,7 +27,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [role, setRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
-
+  
+  // fetch user role
   const loadUser = async () => {
     setLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
@@ -41,13 +42,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     setUser(user);
 
-    const { data: roleRow } = await supabase
+    const { data } = await supabase
       .from("user_role")
       .select("role")
       .eq("id", user.id)
       .single();
 
-    const userRole = roleRow?.role || null;
+    const userRole = data?.role || null;
     setRole(userRole);
     setLoading(false);
 
@@ -56,7 +57,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     loadUser();
-
+    // "Listen the current state login or logout"
     const { data: listener } = supabase.auth.onAuthStateChange((_event, _session) => {
       loadUser();
     });
@@ -64,13 +65,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => listener.subscription.unsubscribe();
   }, []);
 
-  // Sign Out
-  const signOut = async () => {
-    await supabase.auth.signOut();
-    setUser(null);
-    setRole(null);
-    router.push("/login");
-  };
 
   // Sign In
   const signIn = async (email: string, password: string) => {
@@ -103,7 +97,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const signUp = async (email: string, password: string) => {
     setLoading(true);
 
-    // Check if first user to assign admin role
     const { count, error: countError } = await supabase
       .from("user_role")
       .select("*", { count: "exact", head: true });
@@ -128,11 +121,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       role: isFirstUser ? "admin" : "user",
     });
 
-    // Load user and role into context
     await loadUser();
 
 
     setLoading(false);
+  };
+
+
+  // Sign Out
+  const signOut = async () => {
+    await supabase.auth.signOut();
+    setUser(null);
+    setRole(null);
+    router.push("/login");
   };
 
   return (

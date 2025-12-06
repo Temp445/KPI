@@ -2,9 +2,9 @@
 
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
-import { Edit, Plus, Trash2 } from "lucide-react";
+import { Edit, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
-import ProtectedRoute from "@/components/Common/ProtectedRoute";
+import AdminRoute from "@/components/Common/AdminRoute";
 
 const AdminDashboard = () => {
   const [name, setName] = useState("");
@@ -95,206 +95,206 @@ const AdminDashboard = () => {
     fetchData();
   }, []);
 
-
   const handleDelete = async (id: string) => {
-  const confirmDelete = confirm("Are you sure you want to delete this item?");
-  if (!confirmDelete) return;
+    const confirmDelete = confirm("Are you sure you want to delete this item?");
+    if (!confirmDelete) return;
 
-  try {
-    const { error } = await supabase
-      .from("kpi_categories")
-      .delete()
-      .eq("id", id);
+    try {
+      const { error } = await supabase
+        .from("kpi_categories")
+        .delete()
+        .eq("id", id);
 
-    if (error) throw error;
+      if (error) throw error;
 
-    toast({
-      title: "Deleted",
-      description: "Item deleted successfully",
-      variant: "success"
-    });
+      toast({
+        title: "Deleted",
+        description: "Item deleted successfully",
+        variant: "success",
+      });
 
-    const { data } = await supabase.from("kpi_categories").select("*");
-    setData(data ?? []);
-  } catch (err: any) {
-    toast({
-      title: "Error",
-      description: err.message,
-      variant: "destructive",
-    });
-  }
-};
-
-  
+      const { data } = await supabase.from("kpi_categories").select("*");
+      setData(data ?? []);
+    } catch (err: any) {
+      toast({
+        title: "Error",
+        description: err.message,
+        variant: "destructive",
+      });
+    }
+  };
 
   return (
-      <ProtectedRoute roles={["admin"]}>
-    <div className="h-fit p-6">
-      <div className="container mx-auto">
-        <div className="grid lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-1">
-            <div className="sticky top-0">
-              <div className="mb-10">
-                <h1 className="text-3xl font-bold  mb-2">KPI Categories</h1>
-                <p className="">Create and manage your KPI categories</p>
-              </div>
-              <div className=" border  rounded-xl p-6 sticky top-6">
-                <h2 className="text-xl font-semibold  mb-6 flex items-center gap-2">
-                  {editId ? "Edit Category" : "Add New Category"}
-                </h2>
+    <AdminRoute>
+      <div className="h-fit p-6">
+        <div className="container mx-auto">
+          <div className="grid lg:grid-cols-3 gap-8">
+            <div className="lg:col-span-1">
+              <div className="sticky top-0">
+                <div className="mb-10">
+                  <h1 className="text-3xl font-bold  mb-2">KPI Categories</h1>
+                  <p className="">Create and manage your KPI categories</p>
+                </div>
+                <div className=" border  rounded-xl p-6 sticky top-6">
+                  <h2 className="text-xl font-semibold  mb-6 flex items-center gap-2">
+                    {editId ? "Edit Category" : "Add New Category"}
+                  </h2>
 
-                <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-                  <div className="flex flex-col gap-2">
-                    <label className="text-sm font-medium ">
-                      Category Name <span className="text-red-400">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="e.g., Production"
-                      value={name}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setName(val);
-                        setIcon(val ? val.charAt(0).toUpperCase() : "");
-                      }}
-                      required
-                      className=" border   rounded-lg px-4 py-2.5  focus:outline-none "
-                    />
-                  </div>
-
-                  <div className="flex flex-col gap-2">
-                    <label className="text-sm font-medium ">
-                      Category Color <span className="text-red-400">*</span>
-                    </label>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="color"
-                        value={color}
-                        onChange={(e) => setColor(e.target.value)}
-                        className="w-14 h-10 rounded border  cursor-pointer"
-                      />
+                  <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+                    <div className="flex flex-col gap-2">
+                      <label className="text-sm font-medium ">
+                        Category Name <span className="text-red-400">*</span>
+                      </label>
                       <input
                         type="text"
-                        value={color}
-                        onChange={(e) => setColor(e.target.value)}
-                        placeholder="#1581BF"
-                        className="flex-1  border   rounded-lg px-4 py-2.5  focus:outline-none  text-sm font-mono"
+                        placeholder="e.g., Production"
+                        value={name}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setName(val);
+                          setIcon(val ? val.charAt(0).toUpperCase() : "");
+                        }}
+                        required
+                        className=" border   rounded-lg px-4 py-2.5  focus:outline-none "
                       />
                     </div>
-                  </div>
 
-                  <div className="flex flex-col gap-2">
-                    <label className="text-sm font-medium ">
-                      Display Order <span className="text-red-400">*</span>
-                    </label>
-                    <input
-                      type="number"
-                      placeholder="1"
-                      value={displayOrder}
-                      onChange={(e) => setDisplayOrder(Number(e.target.value))}
-                      required
-                      className=" border   rounded-lg px-4 py-2.5  focus:outline-none "
-                    />
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={loading}
-                    className="w-full text-white bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 disabled:from-slate-600 disabled:to-slate-600  font-semibold py-2.5 rounded-lg transition duration-200 flex items-center justify-center gap-2"
-                  >
-                    {loading ? (
-                      <>
-                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        Uploading...
-                      </>
-                    ) : (
-                      <>
-                        {editId ? "Edit Category" : "Add Category"}
-                      </>
-                    )}
-                  </button>
-
-                  {editId && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setEditId(null);
-                        setName("");
-                        setColor("#1581BF");
-                        setIcon("");
-                        setDisplayOrder(undefined);
-                      }}
-                      className="w-full text-blue-600 border border-blue-600 hover:bg-blue-50 font-semibold py-2.5 rounded-lg transition duration-200"
-                    >
-                      Cancel
-                    </button>
-                  )}
-                </form>
-              </div>
-            </div>
-          </div>
-
-          <div className="lg:col-span-2">
-            <div className=" border  rounded-xl p-6">
-              <h2 className="text-xl font-semibold  mb-6">Categories</h2>
-
-              {data.length === 0 ? (
-                <div className="text-center py-12">
-                  <p className="">
-                    No categories yet. Create one to get started!
-                  </p>
-                </div>
-              ) : (
-                <div className="grid gap-4 md:grid-cols-2">
-                  {data.map((item) => (
-                    <div
-                      key={item.id}
-                      className=" border  rounded-lg p-4 hover:border-slate-500 transition"
-                    >
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex items-center gap-3 flex-1">
-                          <div
-                            className="w-12 h-12 rounded-lg flex items-center justify-center text-xl font-bold text-white  flex-shrink-0"
-                            style={{ backgroundColor: item.color }}
-                          >
-                            {item.icon}
-                          </div>
-                          <div className="flex-1">
-                            <p className="font-semibold">{item.name}</p>
-                            <div className="flex flex-col xl:flex-row xl:items-center xl:gap-4 text-sm  mt-2">
-                              <span className="font-mono">{item.color}</span>
-                              <span className="text-slate-500">
-                                Order: {item.display_order}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                        <button
-                          className="hover:text-blue-600 transition p-2"
-                          onClick={() => {
-                            setEditId(item.id);
-                            setName(item.name);
-                            setColor(item.color);
-                            setIcon(item.icon);
-                            setDisplayOrder(item.display_order);
-                          }}
-                        >
-                          <Edit size={18} />
-                        </button>
-                        <button onClick={() => handleDelete(item.id)} className="hover:text-red-600 transition p-2">
-                          <Trash2 size={18} />
-                        </button>
+                    <div className="flex flex-col gap-2">
+                      <label className="text-sm font-medium ">
+                        Category Color <span className="text-red-400">*</span>
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="color"
+                          value={color}
+                          onChange={(e) => setColor(e.target.value)}
+                          className="w-14 h-10 rounded border  cursor-pointer"
+                        />
+                        <input
+                          type="text"
+                          value={color}
+                          onChange={(e) => setColor(e.target.value)}
+                          placeholder="#1581BF"
+                          className="flex-1  border   rounded-lg px-4 py-2.5  focus:outline-none  text-sm font-mono"
+                        />
                       </div>
                     </div>
-                  ))}
+
+                    <div className="flex flex-col gap-2">
+                      <label className="text-sm font-medium ">
+                        Display Order <span className="text-red-400">*</span>
+                      </label>
+                      <input
+                        type="number"
+                        placeholder="1"
+                        value={displayOrder}
+                        onChange={(e) =>
+                          setDisplayOrder(Number(e.target.value))
+                        }
+                        required
+                        className=" border   rounded-lg px-4 py-2.5  focus:outline-none "
+                      />
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      className="w-full text-white bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 disabled:from-slate-600 disabled:to-slate-600  font-semibold py-2.5 rounded-lg transition duration-200 flex items-center justify-center gap-2"
+                    >
+                      {loading ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          Uploading...
+                        </>
+                      ) : (
+                        <>{editId ? "Edit Category" : "Add Category"}</>
+                      )}
+                    </button>
+
+                    {editId && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditId(null);
+                          setName("");
+                          setColor("#1581BF");
+                          setIcon("");
+                          setDisplayOrder(undefined);
+                        }}
+                        className="w-full text-blue-600 border border-blue-600 hover:bg-blue-50 font-semibold py-2.5 rounded-lg transition duration-200"
+                      >
+                        Cancel
+                      </button>
+                    )}
+                  </form>
                 </div>
-              )}
+              </div>
+            </div>
+
+            <div className="lg:col-span-2">
+              <div className=" border  rounded-xl p-6">
+                <h2 className="text-xl font-semibold  mb-6">Categories</h2>
+
+                {data.length === 0 ? (
+                  <div className="text-center py-12">
+                    <p className="">
+                      No categories yet. Create one to get started!
+                    </p>
+                  </div>
+                ) : (
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {data.map((item) => (
+                      <div
+                        key={item.id}
+                        className=" border  rounded-lg p-4 hover:border-slate-500 transition"
+                      >
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex items-center gap-3 flex-1">
+                            <div
+                              className="w-12 h-12 rounded-lg flex items-center justify-center text-xl font-bold text-white  flex-shrink-0"
+                              style={{ backgroundColor: item.color }}
+                            >
+                              {item.icon}
+                            </div>
+                            <div className="flex-1">
+                              <p className="font-semibold">{item.name}</p>
+                              <div className="flex flex-col xl:flex-row xl:items-center xl:gap-4 text-sm  mt-2">
+                                <span className="font-mono">{item.color}</span>
+                                <span className="text-slate-500">
+                                  Order: {item.display_order}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                          <button
+                            className="hover:text-blue-600 transition p-2"
+                            onClick={() => {
+                              setEditId(item.id);
+                              setName(item.name);
+                              setColor(item.color);
+                              setIcon(item.icon);
+                              setDisplayOrder(item.display_order);
+                            }}
+                          >
+                            <Edit size={18} />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(item.id)}
+                            className="hover:text-red-600 transition p-2"
+                          >
+                            <Trash2 size={18} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
-    </ProtectedRoute>
+    </AdminRoute>
   );
 };
 
