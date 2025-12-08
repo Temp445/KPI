@@ -22,10 +22,7 @@ export function ExcelImport({ isOpen, onClose, onImport, kpiTitle }: ExcelImport
   const [previewData, setPreviewData] = useState<WeeklyData[] | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0];
-    if (!selectedFile) return;
-
+  const processFile = async (selectedFile: File) => {
     setFile(selectedFile);
     setError(null);
     setLoading(true);
@@ -42,6 +39,21 @@ export function ExcelImport({ isOpen, onClose, onImport, kpiTitle }: ExcelImport
     }
 
     setLoading(false);
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0];
+    if (selectedFile) processFile(selectedFile);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const droppedFile = e.dataTransfer.files[0];
+    if (droppedFile && droppedFile.name.match(/\.(xlsx|xls)$/i)) {
+      processFile(droppedFile);
+    }
   };
 
   const handleImport = () => {
@@ -64,31 +76,6 @@ export function ExcelImport({ isOpen, onClose, onImport, kpiTitle }: ExcelImport
     e.stopPropagation();
   };
 
-  const handleDrop = async (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    const droppedFile = e.dataTransfer.files[0];
-    if (droppedFile && droppedFile.name.match(/\.(xlsx|xls)$/)) {
-      setFile(droppedFile);
-      setError(null);
-      setLoading(true);
-      setProgress(30);
-
-      const result = await processExcelFile(droppedFile);
-      setProgress(70);
-
-      if (result.success && result.data) {
-        setPreviewData(result.data);
-        setProgress(100);
-      } else {
-        setError(result.error || 'Failed to process file');
-      }
-
-      setLoading(false);
-    }
-  };
-
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
@@ -98,11 +85,7 @@ export function ExcelImport({ isOpen, onClose, onImport, kpiTitle }: ExcelImport
 
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={generateExcelTemplate}
-            >
+            <Button variant="outline" size="sm" onClick={generateExcelTemplate}>
               <Download className="w-4 h-4 mr-2" />
               Download Template
             </Button>
@@ -118,9 +101,7 @@ export function ExcelImport({ isOpen, onClose, onImport, kpiTitle }: ExcelImport
             <p className="text-sm text-gray-600 mb-2">
               Drag and drop your Excel file here, or click to browse
             </p>
-            <p className="text-xs text-gray-500">
-              Supports .xlsx and .xls files
-            </p>
+            <p className="text-xs text-gray-500">Supports .xlsx and .xls files</p>
             <input
               ref={fileInputRef}
               type="file"
@@ -172,7 +153,9 @@ export function ExcelImport({ isOpen, onClose, onImport, kpiTitle }: ExcelImport
                 <table className="w-full text-sm">
                   <thead className="bg-gray-50 sticky top-0">
                     <tr>
-                      <th className="px-3 py-2 text-left">Week</th>
+                      {/* <th className="px-3 py-2 text-left">Week</th>
+                      <th className="px-3 py-2 text-left">Year</th> */}
+                      <th className="px-3 py-2 text-left">Date</th>
                       <th className="px-3 py-2 text-right">Value</th>
                       <th className="px-3 py-2 text-right">Goal</th>
                       <th className="px-3 py-2 text-right">Meet Goal</th>
@@ -183,12 +166,14 @@ export function ExcelImport({ isOpen, onClose, onImport, kpiTitle }: ExcelImport
                   <tbody>
                     {previewData.slice(0, 10).map((row, idx) => (
                       <tr key={idx} className="border-t">
-                        <td className="px-3 py-2">{row.week}</td>
+                        {/* <td className="px-3 py-2">{row.week || '-'}</td>
+                        <td className="px-3 py-2">{row.year || '-'}</td> */}
+                        <td className="px-3 py-2">{row.date || '-'}</td>
                         <td className="px-3 py-2 text-right">{row.value}</td>
-                        <td className="px-3 py-2 text-right">{row.goal || '-'}</td>
-                        <td className="px-3 py-2 text-right">{row.meetGoal || '-'}</td>
-                        <td className="px-3 py-2 text-right">{row.behindGoal || '-'}</td>
-                        <td className="px-3 py-2 text-right">{row.atRisk || '-'}</td>
+                        <td className="px-3 py-2 text-right">{row.goal ?? '-'}</td>
+                        <td className="px-3 py-2 text-right">{row.meetGoal ?? '-'}</td>
+                        <td className="px-3 py-2 text-right">{row.behindGoal ?? '-'}</td>
+                        <td className="px-3 py-2 text-right">{row.atRisk ?? '-'}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -206,10 +191,7 @@ export function ExcelImport({ isOpen, onClose, onImport, kpiTitle }: ExcelImport
             <Button variant="outline" onClick={handleClose}>
               Cancel
             </Button>
-            <Button
-              onClick={handleImport}
-              disabled={!previewData || loading}
-            >
+            <Button onClick={handleImport} disabled={!previewData || loading}>
               <Upload className="w-4 h-4 mr-2" />
               Import Data
             </Button>

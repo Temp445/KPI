@@ -7,36 +7,64 @@ export interface ExcelImportResult {
   error?: string;
 }
 
+/** Convert Excel serial date → YYYY-MM-DD */
+function excelSerialToDate(serial: number): string {
+  const excelEpoch = new Date(1899, 11, 30); // Excel zero date
+  const converted = new Date(excelEpoch.getTime() + serial * 86400000);
+  return converted.toISOString().split("T")[0];
+}
+
+/** Normalize any date input into YYYY-MM-DD */
+function normalizeDate(raw: any): string {
+  if (!raw) return "";
+
+  // case 1: Excel serial (number)
+  if (typeof raw === "number") {
+    return excelSerialToDate(raw);
+  }
+
+  // case 2: Excel text date (12/5/2025 or 5-12-2025 etc)
+  const parsed = new Date(raw);
+  if (!isNaN(parsed.getTime())) {
+    return parsed.toISOString().split("T")[0];
+  }
+
+  return ""; // fallback
+}
+
+/**
+ * Process Excel file → WeeklyData[]
+ */
 export const processExcelFile = async (file: File): Promise<ExcelImportResult> => {
   try {
     const buffer = await file.arrayBuffer();
     const workbook = XLSX.read(buffer, { type: 'array' });
 
-    const firstSheetName = workbook.SheetNames[0];
-    const worksheet = workbook.Sheets[firstSheetName];
+    const sheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[sheetName];
 
-    const jsonData = XLSX.utils.sheet_to_json(worksheet);
+    const jsonData: any[] = XLSX.utils.sheet_to_json(worksheet);
 
-    const weeklyData: WeeklyData[] = jsonData.map((row: any) => ({
-      week: row.week || row.Week || '',
-      value: parseFloat(row.value || row.Value || '0'),
-      goal: row.goal || row.Goal ? parseFloat(row.goal || row.Goal) : undefined,
-      meetGoal: row.meetGoal || row['Meet Goal'] ? parseFloat(row.meetGoal || row['Meet Goal']) : undefined,
-      behindGoal: row.behindGoal || row['Behind Goal'] ? parseFloat(row.behindGoal || row['Behind Goal']) : undefined,
-      atRisk: row.atRisk || row['At Risk'] ? parseFloat(row.atRisk || row['At Risk']) : undefined,
-    }));
-
-    if (weeklyData.length === 0) {
-      return {
-        success: false,
-        error: 'No data found in Excel file',
-      };
+    if (!jsonData || jsonData.length === 0) {
+      return { success: false, error: 'No data found in Excel file' };
     }
 
-    return {
-      success: true,
-      data: weeklyData,
-    };
+    const weeklyData: WeeklyData[] = jsonData.map((row: any) => {
+      const rawDate = row.date || row.Date;
+
+      return {
+        week: row.week || row.Week || "",
+        year: row.year || row.Year || "",
+        value: row.value != null ? Number(row.value) : 0,
+        goal: row.goal != null ? Number(row.goal) : undefined,
+        meetGoal: row.meetGoal != null ? Number(row.meetGoal) : undefined,
+        behindGoal: row.behindGoal != null ? Number(row.behindGoal) : undefined,
+        atRisk: row.atRisk != null ? Number(row.atRisk) : undefined,
+        date: normalizeDate(rawDate), // <-- fixed
+      };
+    });
+
+    return { success: true, data: weeklyData };
   } catch (error) {
     return {
       success: false,
@@ -45,33 +73,42 @@ export const processExcelFile = async (file: File): Promise<ExcelImportResult> =
   }
 };
 
+/**
+ * Export WeeklyData → Excel
+ */
 export const exportToExcel = (data: WeeklyData[], filename: string = 'kpi-data.xlsx') => {
   const worksheet = XLSX.utils.json_to_sheet(data);
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheet, 'KPI Data');
-
   XLSX.writeFile(workbook, filename);
 };
 
+/**
+ * Generate example template
+ */
 export const generateExcelTemplate = () => {
-  const templateData = [
+  const template: WeeklyData[] = [
     {
-      week: 'WK1',
+      week: "WK1",
+      year: 2025,
       value: 0,
       goal: 0,
       meetGoal: 0,
       behindGoal: 0,
       atRisk: 0,
+      date: "2025-01-01",
     },
     {
-      week: 'WK2',
+      week: "WK2",
+      year: 2025,
       value: 0,
       goal: 0,
       meetGoal: 0,
       behindGoal: 0,
       atRisk: 0,
+      date: "2025-01-08",
     },
   ];
 
-  exportToExcel(templateData, 'kpi-template.xlsx');
+  exportToExcel(template, "kpi-template.xlsx");
 };

@@ -15,7 +15,7 @@ export const Navbar = () => {
   }, [user]);
 
   return (
-    <nav className="w-full p-4 bg-gray-100 flex justify-between items-center">
+    <nav className="w-full p-4 flex justify-between items-center">
       <Link href="/" className="font-semibold text-xl">
         Dashboard
       </Link>
@@ -23,12 +23,17 @@ export const Navbar = () => {
       <div className="gap-5 flex">
         
           <Link
-            href="/pillars"
+            href="/manage-pillars"
             className="font-semibold text-sm border p-1.5 rounded"
           >
             Create New Pillars
           </Link>
-      
+          <Link
+            href="/manage-kpi"
+            className="font-semibold text-sm border p-1.5 rounded"
+          >
+            Create New KPI
+          </Link>    
 
         {signedIn ? (
           <button

@@ -3,12 +3,14 @@ export type TimePeriod = 'daily' | 'weekly' | 'monthly';
 export type ActionPlanStatus = 'open' | 'pending' | 'overdue';
 
 export interface WeeklyData {
+  year: string | number; 
   week: string;
   value: number;
   goal?: number;
   meetGoal?: number;
   behindGoal?: number;
   atRisk?: number;
+  date: string;
 }
 
 export interface ActionPlanItem {

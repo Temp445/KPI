@@ -5,7 +5,7 @@ import { supabase } from "@/lib/supabase";
 import { Edit, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 
-const AdminDashboard = () => {
+const ManagePillars = () => {
   const [name, setName] = useState("");
   const [color, setColor] = useState("#1581BF");
   const [icon, setIcon] = useState("");
@@ -130,7 +130,7 @@ const AdminDashboard = () => {
             <div className="lg:col-span-1">
               <div className="sticky top-0">
                 <div className="mb-10">
-                  <h1 className="text-3xl font-bold  mb-2">Pillars</h1>
+                  <h1 className="text-2xl font-bold  mb-2">Pillars Management</h1>
                   <p className="">Create and manage your Pillars</p>
                 </div>
                 <div className=" border  rounded-xl p-6 sticky top-6">
@@ -141,7 +141,7 @@ const AdminDashboard = () => {
                   <form onSubmit={handleSubmit} className="flex flex-col gap-5">
                     <div className="flex flex-col gap-2">
                       <label className="text-sm font-medium ">
-                       KPI pillar Name <span className="text-red-400">*</span>
+                       Pillar Name <span className="text-red-400">*</span>
                       </label>
                       <input
                         type="text"
@@ -159,7 +159,7 @@ const AdminDashboard = () => {
 
                     <div className="flex flex-col gap-2">
                       <label className="text-sm font-medium ">
-                        KPI pillar Color <span className="text-red-400">*</span>
+                        Pillar Color <span className="text-red-400">*</span>
                       </label>
                       <div className="flex items-center gap-2">
                         <input
@@ -230,7 +230,7 @@ const AdminDashboard = () => {
             </div>
 
             <div className="lg:col-span-2">
-              <div className=" border  rounded-xl p-6">
+              <div className="border  rounded-xl p-6">
                 <h2 className="text-xl font-semibold  mb-6">Pillars</h2>
 
                 {data.length === 0 ? (
@@ -295,4 +295,4 @@ const AdminDashboard = () => {
   );
 };
 
-export default AdminDashboard;
+export default ManagePillars;
