@@ -4,7 +4,6 @@ import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
 import { Edit, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
-import AdminRoute from "@/components/Common/AdminRoute";
 
 const AdminDashboard = () => {
   const [name, setName] = useState("");
@@ -39,7 +38,7 @@ const AdminDashboard = () => {
       } else {
         toast({
           title: "Updated",
-          description: "Category updated successfully!",
+          description: "Pillar updated successfully!",
           variant: "success",
         });
 
@@ -125,25 +124,24 @@ const AdminDashboard = () => {
   };
 
   return (
-    <AdminRoute>
       <div className="h-fit p-6">
         <div className="container mx-auto">
           <div className="grid lg:grid-cols-3 gap-8">
             <div className="lg:col-span-1">
               <div className="sticky top-0">
                 <div className="mb-10">
-                  <h1 className="text-3xl font-bold  mb-2">KPI Categories</h1>
-                  <p className="">Create and manage your KPI categories</p>
+                  <h1 className="text-3xl font-bold  mb-2">Pillars</h1>
+                  <p className="">Create and manage your Pillars</p>
                 </div>
                 <div className=" border  rounded-xl p-6 sticky top-6">
                   <h2 className="text-xl font-semibold  mb-6 flex items-center gap-2">
-                    {editId ? "Edit Category" : "Add New Category"}
+                    {editId ? "Edit KPI pillar" : "Create New Pillar"}
                   </h2>
 
                   <form onSubmit={handleSubmit} className="flex flex-col gap-5">
                     <div className="flex flex-col gap-2">
                       <label className="text-sm font-medium ">
-                        Category Name <span className="text-red-400">*</span>
+                       KPI pillar Name <span className="text-red-400">*</span>
                       </label>
                       <input
                         type="text"
@@ -155,13 +153,13 @@ const AdminDashboard = () => {
                           setIcon(val ? val.charAt(0).toUpperCase() : "");
                         }}
                         required
-                        className=" border   rounded-lg px-4 py-2.5  focus:outline-none "
+                        className="border rounded-lg px-4 py-2.5  focus:outline-none "
                       />
                     </div>
 
                     <div className="flex flex-col gap-2">
                       <label className="text-sm font-medium ">
-                        Category Color <span className="text-red-400">*</span>
+                        KPI pillar Color <span className="text-red-400">*</span>
                       </label>
                       <div className="flex items-center gap-2">
                         <input
@@ -207,7 +205,7 @@ const AdminDashboard = () => {
                           Uploading...
                         </>
                       ) : (
-                        <>{editId ? "Edit Category" : "Add Category"}</>
+                        <>{editId ? "Edit Pillar" : "Add Pillar"}</>
                       )}
                     </button>
 
@@ -233,12 +231,12 @@ const AdminDashboard = () => {
 
             <div className="lg:col-span-2">
               <div className=" border  rounded-xl p-6">
-                <h2 className="text-xl font-semibold  mb-6">Categories</h2>
+                <h2 className="text-xl font-semibold  mb-6">Pillars</h2>
 
                 {data.length === 0 ? (
                   <div className="text-center py-12">
                     <p className="">
-                      No categories yet. Create one to get started!
+                      No Pillars yet. Create one to get started!
                     </p>
                   </div>
                 ) : (
@@ -294,7 +292,6 @@ const AdminDashboard = () => {
           </div>
         </div>
       </div>
-    </AdminRoute>
   );
 };
 

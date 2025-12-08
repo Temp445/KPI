@@ -137,7 +137,7 @@ export default function CircleBand({
             x={center}
             y={center}
             textAnchor="middle"
-            dominantBaseline="middle"
+            dominantBaseline="central"
             className="fill-white dark:fill-black"
             style={{
               fontSize: numericSize * 0.42,
