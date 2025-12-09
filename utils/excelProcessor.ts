@@ -95,7 +95,6 @@ export const generateExcelTemplate = async (
     const startDate = start.toISOString().split("T")[0];
     const endDate = end.toISOString().split("T")[0];
 
-    // ✅ FILTER BY metric_id
     const { data, error } = await supabase
       .from("kpi_weekly_data")
       .select("*")

@@ -46,14 +46,12 @@ export function Dashboard() {
 
   useEffect(() => {
     loadDashboardData();
-    // re-load when filters change
   }, [filters]);
 
   const loadDashboardData = async () => {
     setLoading(true);
 
     try {
-      // build start / end dates from filters
       const start = new Date(
         Number(filters.startYear),
         Math.max(0, months.indexOf(filters.startMonth)),
@@ -82,7 +80,7 @@ export function Dashboard() {
           .from('kpi_metrics')
           .select('*')
           .eq('category_id', category.id)
-          .maybeSingle();
+          // .maybeSingle();
 
         let chartData: WeeklyData[] = [];
 
@@ -90,14 +88,14 @@ export function Dashboard() {
           const { data: rawRows } = await supabase
             .from('kpi_weekly_data')
             .select('*')
-            .eq('metric_id', metric.id)
+            .eq('metric_id', metric?.[0]?.id)
             .gte('date', startDate)
             .lte('date', endDate)
             .order('date', { ascending: true });
 
           const rows = rawRows ?? [];
 
-          // DAILY: one row per date
+          // DAILY
           if (filters.timePeriod === 'daily') {
             chartData = rows.map((d: any) => ({
               week: `D${String(new Date(d.date).getDate()).padStart(2, "0")}`,
@@ -111,7 +109,7 @@ export function Dashboard() {
             }));
           }
 
-          // WEEKLY: keep rows but convert date -> week label
+          // WEEKLY
           if (filters.timePeriod === 'weekly') {
             chartData = rows.map((d: any) => {
               const dt = new Date(d.date);
@@ -133,7 +131,7 @@ export function Dashboard() {
             });
           }
 
-          // MONTHLY: aggregate by month
+          // MONTHLY
           if (filters.timePeriod === 'monthly') {
             const map = new Map<string, { year: number; month: number; value: number; goal: number; meetGoal: number; behindGoal: number; atRisk: number; date: string }>();
 
@@ -173,7 +171,7 @@ export function Dashboard() {
           }
         }
 
-        // placeholders if empty
+        // if empty
         if (!chartData || chartData.length === 0) {
           chartData = Array.from({ length: 8 }, (_, i) => {
             const year = filters.startYear ?? new Date().getFullYear();
@@ -191,7 +189,6 @@ export function Dashboard() {
         }
         
 
-        // fetch action plans summary (optional)
         const { data: actionPlans } = await supabase
           .from('action_plans')
           .select('*')
@@ -218,12 +215,12 @@ export function Dashboard() {
         const kpi: KPIData = {
           id: category.id,
           category: category.name,
-          title: metric?.title || `${category.name} Metrics`,
+          title: metric?.[0]?.title || `${category.name} Metrics`,
           color: category.color,
           icon: category.icon,
-          metricId: metric?.id || null, 
+          metricId: metric?.[0]?.id || null, 
           metrics: {
-            primary: metric?.title || `No of ${category.name}`,
+            primary: metric?.[0]?.title || `No of ${category.name}`,
             secondary:
               category.name === 'Quality'
                 ? 'Pareto: Right First Time'
@@ -265,9 +262,9 @@ export function Dashboard() {
         .from('kpi_metrics')
         .select('id')
         .eq('category_id', selectedKPI)
-        .maybeSingle();
+        // .maybeSingle();
 
-      if (!metricRow || !metricRow.id) {
+      if (!metricRow || !metricRow?.[0]?.id) {
         toast({
           title: 'Import Error',
           description: 'No KPI metric exists for this category.',
@@ -276,9 +273,8 @@ export function Dashboard() {
         return;
       }
 
-      const metricId = metricRow.id;
+      const metricId = metricRow?.[0]?.id;
 
-      // Format rows and calculate year/month/week from date
       const formattedRows = data.map((row) => {
         const dateObj = new Date(row.date);
         const year = dateObj.getFullYear();
