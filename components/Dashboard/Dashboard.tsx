@@ -100,7 +100,7 @@ export function Dashboard() {
           // DAILY: one row per date
           if (filters.timePeriod === 'daily') {
             chartData = rows.map((d: any) => ({
-              week: d.date,
+              week: `D${String(new Date(d.date).getDate()).padStart(2, "0")}`,
               year: Number(d.year) || new Date(d.date).getFullYear(),
               value: Number(d.value) || 0,
               goal: d.goal != null ? Number(d.goal) : undefined,
@@ -177,9 +177,8 @@ export function Dashboard() {
         if (!chartData || chartData.length === 0) {
           chartData = Array.from({ length: 8 }, (_, i) => {
             const year = filters.startYear ?? new Date().getFullYear();
-            const weekLabel = `WK${i + 1}`;
             return {
-              week: weekLabel,
+              week: "",
               year,
               value: 0,
               goal: 0,
@@ -190,6 +189,7 @@ export function Dashboard() {
             } as WeeklyData;
           });
         }
+        
 
         // fetch action plans summary (optional)
         const { data: actionPlans } = await supabase
@@ -221,6 +221,7 @@ export function Dashboard() {
           title: metric?.title || `${category.name} Metrics`,
           color: category.color,
           icon: category.icon,
+          metricId: metric?.id || null, 
           metrics: {
             primary: metric?.title || `No of ${category.name}`,
             secondary:
@@ -432,6 +433,8 @@ export function Dashboard() {
           }}
           onImport={handleImportData}
           kpiTitle={selectedKPIData.title}
+           filters={filters} 
+           selectedKPIData={{ metricId: selectedKPIData.metricId! }}
         />
       )}
     </div>

@@ -1,5 +1,6 @@
 import * as XLSX from 'xlsx';
 import { WeeklyData } from '@/types/dashboard';
+import { supabase } from '@/lib/supabase';
 
 export interface ExcelImportResult {
   success: boolean;
@@ -23,7 +24,6 @@ function normalizeDate(raw: any): string {
     return excelSerialToDate(raw);
   }
 
-  // case 2: Excel text date (12/5/2025 or 5-12-2025 etc)
   const parsed = new Date(raw);
   if (!isNaN(parsed.getTime())) {
     return parsed.toISOString().split("T")[0];
@@ -32,9 +32,6 @@ function normalizeDate(raw: any): string {
   return ""; // fallback
 }
 
-/**
- * Process Excel file → WeeklyData[]
- */
 export const processExcelFile = async (file: File): Promise<ExcelImportResult> => {
   try {
     const buffer = await file.arrayBuffer();
@@ -73,9 +70,7 @@ export const processExcelFile = async (file: File): Promise<ExcelImportResult> =
   }
 };
 
-/**
- * Export WeeklyData → Excel
- */
+
 export const exportToExcel = (data: WeeklyData[], filename: string = 'kpi-data.xlsx') => {
   const worksheet = XLSX.utils.json_to_sheet(data);
   const workbook = XLSX.utils.book_new();
@@ -83,32 +78,54 @@ export const exportToExcel = (data: WeeklyData[], filename: string = 'kpi-data.x
   XLSX.writeFile(workbook, filename);
 };
 
-/**
- * Generate example template
- */
-export const generateExcelTemplate = () => {
-  const template: WeeklyData[] = [
-    {
-      week: "WK1",
-      year: 2025,
-      value: 0,
-      goal: 0,
-      meetGoal: 0,
-      behindGoal: 0,
-      atRisk: 0,
-      date: "2025-01-01",
-    },
-    {
-      week: "WK2",
-      year: 2025,
-      value: 0,
-      goal: 0,
-      meetGoal: 0,
-      behindGoal: 0,
-      atRisk: 0,
-      date: "2025-01-08",
-    },
-  ];
+export const generateExcelTemplate = async (
+  filters: any,
+  categoryTitle: string,
+  metricId: string
+) => {
+  try {
+    const months = [
+      "January", "February", "March", "April", "May", "June",
+      "July", "August", "September", "October", "November", "December"
+    ];
 
-  exportToExcel(template, "kpi-template.xlsx");
+    const start = new Date(filters.startYear, months.indexOf(filters.startMonth), 1);
+    const end = new Date(filters.endYear, months.indexOf(filters.endMonth) + 1, 0);
+
+    const startDate = start.toISOString().split("T")[0];
+    const endDate = end.toISOString().split("T")[0];
+
+    // ✅ FILTER BY metric_id
+    const { data, error } = await supabase
+      .from("kpi_weekly_data")
+      .select("*")
+      .eq("metric_id", metricId)
+      .gte("date", startDate)
+      .lte("date", endDate)
+      .order("date", { ascending: true });
+
+    if (error) {
+      console.error("Template fetch error:", error);
+      return;
+    }
+
+    const cleaned = (data || []).map((row: any) => ({
+      date: row.date || "",
+      value: Number(row.value) || 0,
+      goal: row.goal ?? 0,
+      meetGoal: row.meet_goal ?? 0,
+      behindGoal: row.behind_goal ?? 0,
+      atRisk: row.at_risk ?? 0,
+    }));
+
+
+    const worksheet = XLSX.utils.json_to_sheet(cleaned);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, categoryTitle.substring(0, 30));
+
+    XLSX.writeFile(workbook, `kpi-template-${categoryTitle}.xlsx`);
+  } catch (err) {
+    console.error("Error generating template:", err);
+  }
 };
+

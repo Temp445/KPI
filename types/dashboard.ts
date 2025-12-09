@@ -26,6 +26,7 @@ export interface KPIData {
   title: string;
   color: string;
   icon: string;
+   metricId: string, 
   metrics: {
     primary: string;
     secondary?: string;

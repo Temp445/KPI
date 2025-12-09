@@ -12,9 +12,11 @@ interface ExcelImportProps {
   onClose: () => void;
   onImport: (data: WeeklyData[]) => void;
   kpiTitle: string;
+  filters: any;
+  selectedKPIData?: { metricId: string }
 }
 
-export function ExcelImport({ isOpen, onClose, onImport, kpiTitle }: ExcelImportProps) {
+export function ExcelImport({ isOpen, onClose, onImport, kpiTitle, filters, selectedKPIData }: ExcelImportProps) {
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -85,7 +87,10 @@ export function ExcelImport({ isOpen, onClose, onImport, kpiTitle }: ExcelImport
 
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <Button variant="outline" size="sm" onClick={generateExcelTemplate}>
+            <Button variant="outline" size="sm"  onClick={() => {
+    if (!selectedKPIData?.metricId) return;  
+    generateExcelTemplate(filters, kpiTitle, selectedKPIData.metricId);
+  }}>
               <Download className="w-4 h-4 mr-2" />
               Download Template
             </Button>
@@ -153,8 +158,6 @@ export function ExcelImport({ isOpen, onClose, onImport, kpiTitle }: ExcelImport
                 <table className="w-full text-sm">
                   <thead className="bg-gray-50 sticky top-0">
                     <tr>
-                      {/* <th className="px-3 py-2 text-left">Week</th>
-                      <th className="px-3 py-2 text-left">Year</th> */}
                       <th className="px-3 py-2 text-left">Date</th>
                       <th className="px-3 py-2 text-right">Value</th>
                       <th className="px-3 py-2 text-right">Goal</th>
@@ -166,8 +169,7 @@ export function ExcelImport({ isOpen, onClose, onImport, kpiTitle }: ExcelImport
                   <tbody>
                     {previewData.slice(0, 10).map((row, idx) => (
                       <tr key={idx} className="border-t">
-                        {/* <td className="px-3 py-2">{row.week || '-'}</td>
-                        <td className="px-3 py-2">{row.year || '-'}</td> */}
+                        
                         <td className="px-3 py-2">{row.date || '-'}</td>
                         <td className="px-3 py-2 text-right">{row.value}</td>
                         <td className="px-3 py-2 text-right">{row.goal ?? '-'}</td>

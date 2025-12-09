@@ -28,7 +28,6 @@ export function KPICard({ data, onUpload }: KPICardProps) {
     alert(`${pillar}: segment ${idx + 1}`);
   };
 
-  // Calculate total number of segments
   const getNumbersToDisplay = () => {
     switch (filters.timePeriod) {
       case "daily":
@@ -45,41 +44,96 @@ export function KPICard({ data, onUpload }: KPICardProps) {
   const maxNumbers = getNumbersToDisplay();
   const segmentCount = Math.min(maxNumbers);
 
-  // Map chart data to proper positions
-  const mapChartDataToPositions = () => {
-    const mapped: typeof data.chartData = [];
+  const months = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
 
-    for (let i = 0; i < segmentCount; i++) {
-      const position = i + 1;
-      let found: any;
+ //  segment positions mapping
+const mapChartDataToSegments = () => {
+  const mapped: typeof data.chartData = [];
+  const totalSegments = getNumbersToDisplay(); 
 
-      if (filters.timePeriod === "daily") {
-        found = data.chartData.find((d) => new Date(d.date).getDate() === position);
-      } else if (filters.timePeriod === "weekly") {
-        found = data.chartData.find((d) => Number(d.week.replace("WK", "")) === position);
-      } else if (filters.timePeriod === "monthly") {
-        found = data.chartData.find((d) => Number(d.week.split("-")[1]) === position);
-      }
+  const startYear = Number(filters.startYear);
+  const startMonthIndex = months.indexOf(filters.startMonth);
 
-      mapped.push(found ?? { value: 0, goal: 0, date: "" });
+  for (let i = 0; i < totalSegments; i++) {
+    const position = i + 1;
+    let found: any;
+
+    if (filters.timePeriod === "daily") {
+      found = data.chartData.find(
+        (d) =>
+          new Date(d.date) >= new Date(filters.startYear, months.indexOf(filters.startMonth), 1) &&
+          new Date(d.date) <= new Date(filters.endYear, months.indexOf(filters.endMonth) + 1, 0) &&
+          new Date(d.date).getDate() === position
+      );
+    } else if (filters.timePeriod === "weekly") {
+  found = data.chartData.find((d) => {
+    const dt = new Date(d.date);
+
+    const firstDayOfMonth = new Date(dt.getFullYear(), dt.getMonth(), 1);
+    const dayOfMonth = dt.getDate();
+    const localWeek = Math.ceil((dayOfMonth + firstDayOfMonth.getDay()) / 7);
+
+    // Start of filter range
+    const startDate = new Date(filters.startYear, months.indexOf(filters.startMonth), 1);
+
+    const totalMonthsDiff =
+      (dt.getFullYear() - startDate.getFullYear()) * 12 +
+      (dt.getMonth() - startDate.getMonth());
+
+    const safeMonths = Math.max(0, totalMonthsDiff);
+
+    const cumulativeWeekOffset = Array.from({ length: safeMonths }).reduce((acc: number, _, idx) => {
+      const m = new Date(startDate.getFullYear(), startDate.getMonth() + idx, 1);
+      const days = new Date(m.getFullYear(), m.getMonth() + 1, 0).getDate();
+
+      const weekCount = Math.ceil(
+        (days + new Date(m.getFullYear(), m.getMonth(), 1).getDay()) / 7
+      );
+
+      return acc + weekCount;
+    }, 0);
+
+    const relativePosition = cumulativeWeekOffset + localWeek;
+
+    return relativePosition === position;
+  });
+}
+ else if (filters.timePeriod === "monthly") {
+      found = data.chartData.find((d) => {
+        const dt = new Date(d.date);
+        const yearDiff = dt.getFullYear() - startYear;
+        const monthDiff = dt.getMonth() - startMonthIndex;
+        const relativePosition = yearDiff * 12 + monthDiff + 1; 
+        return relativePosition === position;
+      });
     }
 
-    return mapped;
-  };
+    
 
-  const mappedChartData = mapChartDataToPositions();
+    mapped.push(found ?? { value: 0, goal: 0, date: "" });
+  }
 
-  const colors: SegmentColor[] = mappedChartData.map((weekData) => {
-    const value = weekData.value ?? 0;
-    const goal = weekData.goal ?? 0;
-    const behindGoal = weekData.behindGoal ?? 0;
-    const atRisk = weekData.atRisk ?? 0;
+  return mapped;
+};
 
-    if (goal && value < goal * 0.9) return "red";
-    if (goal && value < goal) return "amber";
-    if (goal && value >= goal) return "yellow";
-    return "white";
-  });
+
+
+const mappedChartData = mapChartDataToSegments();
+
+const colors: SegmentColor[] = mappedChartData.map((weekData) => {
+  const isGoal = weekData?.goal && weekData.value >= weekData.goal;
+  const isBehind = weekData?.behindGoal && weekData.value < (weekData.goal || 0);
+  const isAtRisk = weekData?.atRisk && weekData.value < (weekData.goal || 0) * 0.9;
+
+  if (isAtRisk) return "red";
+  if (isBehind) return "amber";
+  if (isGoal) return "yellow";
+  return "white";
+});
+
 
   // Custom display
   const [direction, setDirection] = useState<"clockwise" | "anticlockwise">("clockwise");
@@ -88,7 +142,7 @@ export function KPICard({ data, onUpload }: KPICardProps) {
 
   return (
     <Card className="shadow-lg hover:shadow-xl transition-shadow">
-      <div className="p-2 rounded-lg relative group" style={{ backgroundColor: data.color }}>
+      <div className="p-2 rounded-t-lg relative group" style={{ backgroundColor: data.color }}>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-white text-xl font-semibold">{data.category}</h2>
 
@@ -140,7 +194,7 @@ export function KPICard({ data, onUpload }: KPICardProps) {
       <div className="p-4 bg-white">
         <div className="flex items-center justify-between mb-4">
           <select className="text-sm border border-gray-300 rounded-md px-3 py-1.5">
-            <option>{data.metrics.primary}</option>
+              <option>{data.metrics.primary}</option>
           </select>
           <button className="text-gray-400 hover:text-gray-600">
             <Upload className="w-4 h-4" />
