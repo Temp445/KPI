@@ -10,6 +10,7 @@ export default function ToggleMenu({
   startRing,
   setLength,
   length,
+  showRange,
 }: {
   setDirection: (dir: "clockwise" | "anticlockwise") => void;
   direction: "clockwise" | "anticlockwise";
@@ -17,6 +18,7 @@ export default function ToggleMenu({
   startRing: "outer" | "inner";
   setLength: (val: number) => void;
   length: 1 | 2 | 3;
+  showRange: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -123,7 +125,7 @@ export default function ToggleMenu({
             </div>
           )}
           <div className="border-t my-1"></div>
-
+{showRange && (
           <div className="px-4 py-1">
             <label className="text-xs block mb-1">
               Display Ratio 1:{length}
@@ -152,6 +154,7 @@ export default function ToggleMenu({
               <span>3</span>
             </div>
           </div>
+)}
         </div>
       )}
     </div>

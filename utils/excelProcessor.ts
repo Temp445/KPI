@@ -70,13 +70,23 @@ export const processExcelFile = async (file: File): Promise<ExcelImportResult> =
   }
 };
 
+export const exportToExcel = (data: WeeklyData[], filename: string) => {
+  const cleaned = data.map((row) => ({
+    date: row.date || "",
+    value: row.value ?? 0,
+    goal: row.goal ?? "",
+    meetGoal: row.meetGoal ?? "",
+    behindGoal: row.behindGoal ?? "",
+    atRisk: row.atRisk ?? "",
+  }));
 
-export const exportToExcel = (data: WeeklyData[], filename: string = 'kpi-data.xlsx') => {
-  const worksheet = XLSX.utils.json_to_sheet(data);
+  const worksheet = XLSX.utils.json_to_sheet(cleaned);
   const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, 'KPI Data');
+  XLSX.utils.book_append_sheet(workbook, worksheet, "KPI Data");
   XLSX.writeFile(workbook, filename);
 };
+
+
 
 export const generateExcelTemplate = async (
   filters: any,

@@ -17,6 +17,8 @@ export function Dashboard() {
   const { kpiData, setKPIData, loading, setLoading, filters } = useDashboardStore();
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [selectedKPI, setSelectedKPI] = useState<string | null>(null);
+  const [activeMetricId, setActiveMetricId] = useState<string | null>(null);
+
 
   const [allowOverflow, setAllowOverflow] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
@@ -227,6 +229,7 @@ export function Dashboard() {
                 : category.name === 'Safety'
                 ? 'One Minute Manager'
                 : `One Minute Manager`,
+                allMetrics: metric?.map((m: any) => ({ id: m.id, title: m.title })) || [],
           },
           chartData,
           actionPlans: plans,
@@ -249,118 +252,84 @@ export function Dashboard() {
     }
   };
 
-  const handleUpload = (kpiId: string) => {
-    setSelectedKPI(kpiId);
+ const handleUpload = (payload: string) => {
+  const [categoryId, metricId, type] = payload.split(":");
+
+  setSelectedKPI(categoryId);
+  setActiveMetricId(metricId);
+
+  if (type === "import") {
     setImportDialogOpen(true);
-  };
+  }
+};
+
 
   const handleImportData = async (data: WeeklyData[]) => {
-    if (!selectedKPI) return;
+  if (!selectedKPI || !activeMetricId) return;
 
-    try {
-      const { data: metricRow } = await supabase
-        .from('kpi_metrics')
-        .select('id')
-        .eq('category_id', selectedKPI)
-        // .maybeSingle();
+  try {
+    const metricId = activeMetricId;   
 
-      if (!metricRow || !metricRow?.[0]?.id) {
-        toast({
-          title: 'Import Error',
-          description: 'No KPI metric exists for this category.',
-          variant: 'destructive',
-        });
-        return;
-      }
+    const formattedRows = data.map((row) => {
+      const dateObj = new Date(row.date);
+      const year = dateObj.getFullYear();
+      const month = dateObj.getMonth() + 1;
+      const week = Math.ceil(
+        ((dateObj.getTime() - new Date(year, 0, 1).getTime()) / 86400000 + 1) / 7
+      );
 
-      const metricId = metricRow?.[0]?.id;
+      return {
+        metric_id: metricId,  
+        week_number: week,
+        year,
+        month,
+        value: Number(row.value),
+        goal: row.goal ?? null,
+        meet_goal: row.meetGoal ?? null,
+        behind_goal: row.behindGoal ?? null,
+        at_risk: row.atRisk ?? null,
+        date: row.date,
+      };
+    });
 
-      const formattedRows = data.map((row) => {
-        const dateObj = new Date(row.date);
-        const year = dateObj.getFullYear();
-        const month = dateObj.getMonth() + 1;
-        const week = Math.ceil(
-          ((dateObj.getTime() - new Date(year, 0, 1).getTime()) / 86400000 + 1) / 7
-        );
+    // Remove duplicate dates
+    const map = new Map();
+    formattedRows.forEach((row) => {
+      if (!map.has(row.date)) map.set(row.date, row);
+    });
+    const uniqueRows = Array.from(map.values());
 
-        return {
-          metric_id: metricId,
-          week_number: week,
-          year,
-          month,
-          value: Number(row.value),
-          goal: row.goal !== undefined ? Number(row.goal) : null,
-          meet_goal: row.meetGoal !== undefined ? Number(row.meetGoal) : null,
-          behind_goal: row.behindGoal !== undefined ? Number(row.behindGoal) : null,
-          at_risk: row.atRisk !== undefined ? Number(row.atRisk) : null,
-          date: row.date,
-        };
-      });
-
-      // Detect duplicates by DATE only
-      const map = new Map<string, any>();
-      const duplicates: any[] = [];
-
-      formattedRows.forEach((row) => {
-        const key = String(row.date);
-        if (map.has(key)) duplicates.push(row);
-        else map.set(key, row);
-      });
-
-      const uniqueRows = Array.from(map.values());
-
-      if (duplicates.length > 0) {
-        const duplicateDates = duplicates.map((d) => d.date).join(', ');
-        const confirmRemove = window.confirm(
-          `Duplicate dates found: ${duplicateDates}. Remove duplicates and continue?`
-        );
-        if (!confirmRemove) return;
-
-        toast({
-          title: 'Duplicates Removed',
-          description: `${duplicates.length} duplicate rows removed.`,
-        });
-      }
-
-      // Delete only rows that match DATE for this metric
-      for (const row of uniqueRows) {
-        await supabase
-          .from('kpi_weekly_data')
-          .delete()
-          .eq('metric_id', metricId)
-          .eq('date', row.date);
-      }
-
-      // Insert new rows
-      const { error: insertError } = await supabase.from('kpi_weekly_data').insert(uniqueRows);
-
-      if (insertError) {
-        toast({
-          title: 'Import Failed',
-          description: insertError.message,
-          variant: 'destructive',
-        });
-        return;
-      }
-
-      toast({
-        title: 'Import Success',
-        description: 'Excel data imported successfully.',
-        variant: 'success',
-      });
-
-      await loadDashboardData();
-      setImportDialogOpen(false);
-      setSelectedKPI(null);
-    } catch (err) {
-      console.error('Unexpected import error:', err);
-      toast({
-        title: 'Import Failed',
-        description: String((err as Error)?.message || err),
-        variant: 'destructive',
-      });
+    // Remove existing rows for same metricId + date
+    for (const row of uniqueRows) {
+      await supabase
+        .from("kpi_weekly_data")
+        .delete()
+        .eq("metric_id", metricId)
+        .eq("date", row.date);
     }
-  };
+
+    await supabase.from("kpi_weekly_data").insert(uniqueRows);
+
+    toast({
+      title: "Import Success",
+      description: "Excel imported to selected metric.",
+      variant: "success",
+    });
+
+    await loadDashboardData();
+    setImportDialogOpen(false);
+    setSelectedKPI(null);
+    setActiveMetricId(null);
+
+  } catch (error) {
+    toast({
+      title: "Import Failed",
+      description: String(error),
+      variant: "destructive",
+    });
+  }
+};
+
 
   const selectedKPIData = kpiData.find((k) => k.id === selectedKPI);
 

@@ -1,11 +1,20 @@
-'use client';
+"use client";
 
-import { useState, useRef } from 'react';
-import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Upload, FileSpreadsheet, Download, X } from 'lucide-react';
-import { processExcelFile, exportToExcel, generateExcelTemplate } from '@/utils/excelProcessor';
-import { WeeklyData } from '@/types/dashboard';
+import { useState, useRef } from "react";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Upload, FileSpreadsheet, Download, X } from "lucide-react";
+import {
+  processExcelFile,
+  exportToExcel,
+  generateExcelTemplate,
+} from "@/utils/excelProcessor";
+import { WeeklyData } from "@/types/dashboard";
 
 interface ExcelImportProps {
   isOpen: boolean;
@@ -13,10 +22,17 @@ interface ExcelImportProps {
   onImport: (data: WeeklyData[]) => void;
   kpiTitle: string;
   filters: any;
-  selectedKPIData?: { metricId: string }
+  selectedKPIData?: { metricId: string };
 }
 
-export function ExcelImport({ isOpen, onClose, onImport, kpiTitle, filters, selectedKPIData }: ExcelImportProps) {
+export function ExcelImport({
+  isOpen,
+  onClose,
+  onImport,
+  kpiTitle,
+  filters,
+  selectedKPIData,
+}: ExcelImportProps) {
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -37,7 +53,7 @@ export function ExcelImport({ isOpen, onClose, onImport, kpiTitle, filters, sele
       setPreviewData(result.data);
       setProgress(100);
     } else {
-      setError(result.error || 'Failed to process file');
+      setError(result.error || "Failed to process file");
     }
 
     setLoading(false);
@@ -87,10 +103,18 @@ export function ExcelImport({ isOpen, onClose, onImport, kpiTitle, filters, sele
 
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <Button variant="outline" size="sm"  onClick={() => {
-    if (!selectedKPIData?.metricId) return;  
-    generateExcelTemplate(filters, kpiTitle, selectedKPIData.metricId);
-  }}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                if (!selectedKPIData?.metricId) return;
+                generateExcelTemplate(
+                  filters,
+                  kpiTitle,
+                  selectedKPIData.metricId
+                );
+              }}
+            >
               <Download className="w-4 h-4 mr-2" />
               Download Template
             </Button>
@@ -106,7 +130,9 @@ export function ExcelImport({ isOpen, onClose, onImport, kpiTitle, filters, sele
             <p className="text-sm text-gray-600 mb-2">
               Drag and drop your Excel file here, or click to browse
             </p>
-            <p className="text-xs text-gray-500">Supports .xlsx and .xls files</p>
+            <p className="text-xs text-gray-500">
+              Supports .xlsx and .xls files
+            </p>
             <input
               ref={fileInputRef}
               type="file"
@@ -141,7 +167,9 @@ export function ExcelImport({ isOpen, onClose, onImport, kpiTitle, filters, sele
                   style={{ width: `${progress}%` }}
                 />
               </div>
-              <p className="text-sm text-center text-gray-600">Processing file...</p>
+              <p className="text-sm text-center text-gray-600">
+                Processing file...
+              </p>
             </div>
           )}
 
@@ -153,7 +181,9 @@ export function ExcelImport({ isOpen, onClose, onImport, kpiTitle, filters, sele
 
           {previewData && previewData.length > 0 && (
             <div className="space-y-2">
-              <h4 className="font-medium text-sm">Preview Data ({previewData.length} rows)</h4>
+              <h4 className="font-medium text-sm">
+                Preview Data ({previewData.length} rows)
+              </h4>
               <div className="border rounded-md overflow-hidden max-h-64 overflow-y-auto">
                 <table className="w-full text-sm">
                   <thead className="bg-gray-50 sticky top-0">
@@ -169,13 +199,20 @@ export function ExcelImport({ isOpen, onClose, onImport, kpiTitle, filters, sele
                   <tbody>
                     {previewData.slice(0, 10).map((row, idx) => (
                       <tr key={idx} className="border-t">
-                        
-                        <td className="px-3 py-2">{row.date || '-'}</td>
+                        <td className="px-3 py-2">{row.date || "-"}</td>
                         <td className="px-3 py-2 text-right">{row.value}</td>
-                        <td className="px-3 py-2 text-right">{row.goal ?? '-'}</td>
-                        <td className="px-3 py-2 text-right">{row.meetGoal ?? '-'}</td>
-                        <td className="px-3 py-2 text-right">{row.behindGoal ?? '-'}</td>
-                        <td className="px-3 py-2 text-right">{row.atRisk ?? '-'}</td>
+                        <td className="px-3 py-2 text-right">
+                          {row.goal ?? "-"}
+                        </td>
+                        <td className="px-3 py-2 text-right">
+                          {row.meetGoal ?? "-"}
+                        </td>
+                        <td className="px-3 py-2 text-right">
+                          {row.behindGoal ?? "-"}
+                        </td>
+                        <td className="px-3 py-2 text-right">
+                          {row.atRisk ?? "-"}
+                        </td>
                       </tr>
                     ))}
                   </tbody>

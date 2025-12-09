@@ -26,10 +26,11 @@ export interface KPIData {
   title: string;
   color: string;
   icon: string;
-   metricId: string, 
+  metricId: string, 
   metrics: {
     primary: string;
     secondary?: string;
+    allMetrics?: { id: string; title: string }[];
   };
   chartData: WeeklyData[];
   actionPlans: ActionPlanItem[];
