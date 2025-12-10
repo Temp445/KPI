@@ -3,8 +3,8 @@
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
 import React, { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
 import { Edit, Trash2 } from "lucide-react";
+import { useAuth } from "@/context/authContext";
 
 const ManageActionPlan = () => {
   const [pillar, setPillar] = useState<any[]>([]);
@@ -16,6 +16,8 @@ const ManageActionPlan = () => {
   const [status, setStatus] = useState<string>("");
 
   const [editId, setEditId] = useState<string | null>(null);
+
+    const { user,loading } = useAuth();
 
   useEffect(() => {
     fetchPillars();
@@ -66,6 +68,17 @@ const ManageActionPlan = () => {
         resetForm();
         fetchActionPlans();
       }
+      
+      if (loading) return;
+      if (!user) {
+        toast({
+          title: "Unauthorized",
+          description: "Access denied. Only logged-in users can update this data.",
+          variant: "destructive",
+        });
+        return;
+      }
+
     } else {
       const { error } = await supabase.from("action_plans").insert([
         { category_id: categoryId, title, due_date: dueDate, status },
@@ -76,6 +89,16 @@ const ManageActionPlan = () => {
         resetForm();
         fetchActionPlans();
       }
+
+      if (loading) return;
+          if (!user) {
+            toast({
+              title: "Unauthorized",
+              description: "Access denied. Only logged-in users can create new data.",
+              variant: "destructive",
+            });
+            return;
+          }
     }
   };
 
@@ -93,21 +116,28 @@ const ManageActionPlan = () => {
       toast({ title: "Deleted", description: "Action Plan removed", variant: "success" });
       fetchActionPlans();
     }
+    if (loading) return;
+        if (!user) {
+          toast({
+            title: "Unauthorized",
+            description: "Access denied. Only logged-in users can delete this data.",
+            variant: "destructive",
+          });
+          return;
+        }
   };
 
   return (
     <div className="flex w-full p-6 gap-6">
       
-      {/* LEFT SIDE — FORM */}
       <div className=" lg:sticky lg:top-10 h-fit p-6 border rounded-md bg-white w-1/3">
         <form onSubmit={handleSubmit} className="space-y-4">
           <h2 className="text-xl font-bold mb-4">
             {editId ? "Edit Action Plan" : "Create Action Plan"}
           </h2>
 
-          {/* KPI Pillar */}
           <div>
-            <p className="font-medium mb-1">Select KPI Pillar</p>
+            <p className="font-medium mb-1">Pillar</p>
             <select
               value={categoryId}
               onChange={(e) => setCategoryId(e.target.value)}

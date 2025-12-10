@@ -4,6 +4,7 @@ import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
 import { Edit, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useAuth } from "@/context/authContext";
 
 const ManagePillars = () => {
   const [name, setName] = useState("");
@@ -15,6 +16,25 @@ const ManagePillars = () => {
   const [data, setData] = useState<any[]>([]);
 
   const [editId, setEditId] = useState<string | null>(null);
+  const { user} = useAuth();
+
+const fetchData = async () => {
+  const { data, error } = await supabase.from("kpi_categories").select("*");
+  if (!error) setData(data);
+};
+
+useEffect(() => {
+  fetchData();
+}, []);
+
+  
+  const resetForm = () => {
+    setEditId(null);
+    setName("");
+    setColor("#1581BF");
+    setIcon("");
+    setDisplayOrder(undefined);
+  };
 
   const handleSubmit = async (e: any) => {
     e.preventDefault();
@@ -29,24 +49,30 @@ const ManagePillars = () => {
 
       setLoading(false);
 
+      if (!user) {
+            toast({
+              title: "Unauthorized",
+              description: "Access denied. Only logged-in users can update this data.",
+              variant: "destructive",
+            });
+            return;
+          }
+
       if (error) {
         toast({
           title: "Error",
           description: error.message,
           variant: "destructive",
         });
+        
       } else {
         toast({
           title: "Updated",
           description: "Pillar updated successfully!",
           variant: "success",
         });
-
-        setEditId(null);
-        setName("");
-        setColor("#1581BF");
-        setIcon("");
-        setDisplayOrder(undefined);
+        resetForm();
+        fetchData(); 
       }
     } else {
       // INSERT MODE
@@ -55,6 +81,15 @@ const ManagePillars = () => {
         .insert([{ name, color, icon, display_order: displayOrder }]);
 
       setLoading(false);
+
+      if (!user) {
+            toast({
+              title: "Unauthorized",
+              description: "Access denied. Only logged-in users can create new data.",
+              variant: "destructive",
+            });
+            return;
+          }
 
       if (error) {
         toast({
@@ -68,59 +103,39 @@ const ManagePillars = () => {
           description: "Data uploaded successfully!",
           variant: "success",
         });
-
-        setName("");
-        setColor("#1581BF");
-        setIcon("");
-        setDisplayOrder(0);
+       resetForm();
+       fetchData(); 
       }
     }
-    const { data } = await supabase.from("kpi_categories").select("*");
-    setData(data ?? []);
   };
 
-  //  GET DATA
-  useEffect(() => {
-    const fetchData = async () => {
-      const { data, error } = await supabase.from("kpi_categories").select("*");
-
-      if (error) {
-        console.error(error);
-        return;
-      }
-
-      setData(data);
-    };
-    fetchData();
-  }, []);
 
   const handleDelete = async (id: string) => {
-    const confirmDelete = confirm("Are you sure you want to delete this item?");
-    if (!confirmDelete) return;
-
-    try {
+    
       const { error } = await supabase
         .from("kpi_categories")
         .delete()
         .eq("id", id);
 
       if (error) throw error;
-
+     if (!error) {
       toast({
         title: "Deleted",
         description: "Item deleted successfully",
         variant: "success",
       });
+      fetchData(); 
+    }
 
-      const { data } = await supabase.from("kpi_categories").select("*");
-      setData(data ?? []);
-    } catch (err: any) {
+    if (!user) {
       toast({
-        title: "Error",
-        description: err.message,
+        title: "Unauthorized",
+        description: "Access denied. Only logged-in users can delete this data.",
         variant: "destructive",
       });
+      return;
     }
+   
   };
 
   return (

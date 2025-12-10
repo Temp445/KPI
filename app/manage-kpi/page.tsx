@@ -4,6 +4,7 @@ import { supabase } from "@/lib/supabase";
 import React, { useEffect, useState } from "react";
 import { toast } from "@/hooks/use-toast";
 import { Edit, Trash2 } from "lucide-react";
+import { useAuth } from "@/context/authContext";
 
 const ManageKpi = () => {
   const [pillar, setPillar] = useState<any[]>([]);
@@ -14,6 +15,10 @@ const ManageKpi = () => {
   const [metricType, setMetricType] = useState<string>("");
 
   const [editId, setEditId] = useState<string | null>(null);
+
+
+  const { user,loading } = useAuth();
+
 
   useEffect(() => {
     fetchPillars();
@@ -73,6 +78,17 @@ const ManageKpi = () => {
         resetForm();
         fetchMetrics();
       }
+
+      if (loading) return;
+    if (!user) {
+      toast({
+        title: "Unauthorized",
+        description: "Access denied. Only logged-in users can update this data.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     } else {
       const { error } = await supabase.from("kpi_metrics").insert([
         {
@@ -91,6 +107,16 @@ const ManageKpi = () => {
         resetForm();
         fetchMetrics();
       }
+
+    if (loading) return;
+    if (!user) {
+      toast({
+        title: "Unauthorized",
+        description: "Access denied. Only logged-in users can create new data.",
+        variant: "destructive",
+      });
+      return;
+    }
     }
   };
 
@@ -105,6 +131,16 @@ const ManageKpi = () => {
       });
       fetchMetrics();
     }
+
+    if (loading) return;
+    if (!user) {
+      toast({
+        title: "Unauthorized",
+        description: "Access denied. Only logged-in users can delete this data.",
+        variant: "destructive",
+      });
+      return;
+    }
   };
 
   const editMetric = (item: any) => {
@@ -118,19 +154,20 @@ const ManageKpi = () => {
     <div className="min-h-screen p-4 md:p-8">
       <div className="container mx-auto">
 
-        <div className="text-center md:text-left mb-8">
-          <h1 className="text-2xl font-bold ">KPI Management</h1>
-          <p className="mt-2">Create and manage your KPI</p>
-        </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-          <div className=" shadow-md rounded-xl p-6 lg:sticky lg:top-10 h-fit border">
+          <div className="p-6 lg:sticky lg:top-10 h-fit">
+
+             <div className="text-center md:text-left mb-8">
+          <h1 className="text-2xl font-bold ">KPI Management</h1>
+          <p className="mt-2">Create and manage your KPI</p>
+        </div>
+            <form onSubmit={handleSubmit} className="space-y-4 border rounded-md p-4 shadow-sm">
             <h2 className="text-xl font-semibold  mb-6">
               {editId ? "Edit KPI" : "Create New KPI"}
             </h2>
 
-            <form className="space-y-5" onSubmit={handleSubmit}>
               <div>
                 <label className="block text-sm font-medium  mb-1">
                   Pillar

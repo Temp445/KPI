@@ -55,7 +55,7 @@ export const processExcelFile = async (file: File): Promise<ExcelImportResult> =
         meetGoal: row.meetGoal != null ? Number(row.meetGoal) : undefined,
         behindGoal: row.behindGoal != null ? Number(row.behindGoal) : undefined,
         atRisk: row.atRisk != null ? Number(row.atRisk) : undefined,
-        date: normalizeDate(rawDate), // <-- fixed
+        date: normalizeDate(rawDate), 
       };
     });
 

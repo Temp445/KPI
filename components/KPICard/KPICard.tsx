@@ -6,12 +6,7 @@ import { ExternalLink, Upload } from "lucide-react";
 import { KPIChart } from "./KPIChart";
 import { ActionPlanSection } from "../ActionPlan/ActionPlanSection";
 import { useDashboardStore } from "@/stores/dashboardStore";
-import {
-  getDaysInMonth,
-  getWeeksBetweenMonths,
-  getWeeksInYear,
-  getSelectedMonthLength,
-} from "@/utils/dateCalculations";
+import {getDaysInMonth,getWeeksBetweenMonths,getWeeksInYear,getSelectedMonthLength} from "@/utils/dateCalculations";
 import CircleBand from "../KPICircleChart/CircleBand";
 import { useState } from "react";
 import ToggleSwitch from "../FiltersButton/ToggleSwitch";
@@ -60,7 +55,7 @@ export function KPICard({ data, onUpload}: KPICardProps) {
       rows?.map((d: any) => ({
         week: `WK${d.week_number}`,
         year: d.year,
-        value: Number(d.value) || 0,
+        value: Number(d.value) || 30,
         goal: d.goal ?? undefined,
         meetGoal: d.meet_goal ?? undefined,
         behindGoal: d.behind_goal ?? undefined,
@@ -78,21 +73,11 @@ export function KPICard({ data, onUpload}: KPICardProps) {
   const getNumbersToDisplay = () => {
     switch (filters.timePeriod) {
       case "daily":
-        return getDaysInMonth(filters?.startMonth, filters.startYear);
+        return getDaysInMonth(filters.startMonth, filters.startYear);
       case "monthly":
-        return getSelectedMonthLength(
-          filters?.startMonth,
-          filters.startYear,
-          filters?.endMonth,
-          filters.endYear
-        );
+        return getSelectedMonthLength(filters.startMonth,filters.startYear,filters.endMonth,filters.endYear);
       case "weekly":
-        return getWeeksBetweenMonths(
-          filters?.startMonth,
-          filters?.startYear,
-          filters?.endMonth,
-          filters?.endYear
-        );
+        return getWeeksBetweenMonths(filters.startMonth,filters.startYear,filters.endMonth,filters.endYear);
       default:
         return getWeeksInYear(filters.startYear);
     }
@@ -101,28 +86,12 @@ export function KPICard({ data, onUpload}: KPICardProps) {
   const maxNumbers = getNumbersToDisplay();
   const segmentCount = Math.min(maxNumbers);
 
-  const months = [
-    "January",
-    "February",
-    "March",
-    "April",
-    "May",
-    "June",
-    "July",
-    "August",
-    "September",
-    "October",
-    "November",
-    "December",
-  ];
+  const months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 
   //  segment positions mapping
   const mapChartDataToSegments = () => {
     const mapped: typeof selectedChartData = [];
     const totalSegments = getNumbersToDisplay();
-
-    const startYear = Number(filters.startYear);
-    const startMonthIndex = months.indexOf(filters.startMonth);
 
     for (let i = 0; i < totalSegments; i++) {
       const position = i + 1;
@@ -167,7 +136,7 @@ export function KPICard({ data, onUpload}: KPICardProps) {
             (dt.getMonth() - startDate.getMonth());
 
           const safeMonths = Math.max(0, totalMonthsDiff);
-
+          
           const cumulativeWeekOffset = Array.from({
             length: safeMonths,
           }).reduce((acc: number, _, idx) => {
@@ -193,15 +162,24 @@ export function KPICard({ data, onUpload}: KPICardProps) {
 
           return relativePosition === position;
         });
-      } else if (filters.timePeriod === "monthly") {
-        found = selectedChartData.find((d) => {
-          const dt = new Date(d.date);
-          const yearDiff = dt.getFullYear() - startYear;
-          const monthDiff = dt.getMonth() - startMonthIndex;
-          const relativePosition = yearDiff * 12 + monthDiff + 1;
-          return relativePosition === position;
-        });
-      }
+      }  else if (filters.timePeriod === "monthly") {
+  found = selectedChartData.find((d) => {
+    const dt = new Date(d.date);
+
+    const totalMonths =
+      (filters.endYear - filters.startYear) * 12 +
+      (months.indexOf(filters.endMonth) - months.indexOf(filters.startMonth)) + 1;
+
+    // Limit position to actual available months
+    if (position > totalMonths) return false;
+
+    const monthIndex =
+      (dt.getFullYear() - filters.startYear) * 12 +
+      (dt.getMonth() - months.indexOf(filters.startMonth)) + 1;
+
+    return monthIndex === position;
+  });
+}
 
       mapped.push(found ?? { value: 0, goal: 0, date: "" });
     }
@@ -225,9 +203,7 @@ export function KPICard({ data, onUpload}: KPICardProps) {
   });
 
   // Custom display
-  const [direction, setDirection] = useState<"clockwise" | "anticlockwise">(
-    "clockwise"
-  );
+  const [direction, setDirection] = useState<"clockwise" | "anticlockwise">("clockwise");
   const [startRing, setStartRing] = useState<"outer" | "inner">("outer");
   const [length, setLength] = useState<1 | 2 | 3>(1);
 

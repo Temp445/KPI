@@ -83,7 +83,6 @@ export function Dashboard() {
           .from('kpi_metrics')
           .select('*')
           .eq('category_id', category.id)
-          // .maybeSingle();
 
         let chartData: WeeklyData[] = [];
 
@@ -386,7 +385,7 @@ const handleDownload = (metricId: string) => {
         {loading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
             {[...Array(5)].map((_, i) => (
-              <Skeleton key={i} className="h-[600px] rounded-lg" />
+              <Skeleton key={i} className="h-[600px] rounded-lg bg-gray-100 " />
             ))}
           </div>
         ) : (
