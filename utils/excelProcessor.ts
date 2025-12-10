@@ -9,7 +9,7 @@ export interface ExcelImportResult {
 
 /** Convert Excel serial date → YYYY-MM-DD */
 function excelSerialToDate(serial: number): string {
-  const excelEpoch = new Date(1899, 11, 30); // Excel zero date
+  const excelEpoch = new Date(1899, 11, 30);
   const converted = new Date(excelEpoch.getTime() + serial * 86400000);
   return converted.toISOString().split("T")[0];
 }
@@ -17,19 +17,22 @@ function excelSerialToDate(serial: number): string {
 /** Normalize any date input into YYYY-MM-DD */
 function normalizeDate(raw: any): string {
   if (!raw) return "";
-
-  // case 1: Excel serial (number)
-  if (typeof raw === "number") {
-    return excelSerialToDate(raw);
-  }
-
+  if (typeof raw === "number") return excelSerialToDate(raw);
   const parsed = new Date(raw);
-  if (!isNaN(parsed.getTime())) {
-    return parsed.toISOString().split("T")[0];
-  }
-  return ""; 
+  return isNaN(parsed.getTime()) ? "" : parsed.toISOString().split("T")[0];
 }
 
+/** Normalize Excel headers → lowercase or camelCase */
+function normalizeHeader(header: string): string {
+  const clean = header.trim().replace(/\s+|_|-/g, '').toLowerCase();
+
+  if (clean === 'meetgoal') return 'meetGoal';
+  if (clean === 'behindgoal') return 'behindGoal';
+  if (clean === 'atrisk') return 'atRisk';
+  return clean;
+}
+
+/** Process Excel file to WeeklyData */
 export const processExcelFile = async (file: File): Promise<ExcelImportResult> => {
   try {
     const buffer = await file.arrayBuffer();
@@ -38,26 +41,33 @@ export const processExcelFile = async (file: File): Promise<ExcelImportResult> =
     const sheetName = workbook.SheetNames[0];
     const worksheet = workbook.Sheets[sheetName];
 
-    const jsonData: any[] = XLSX.utils.sheet_to_json(worksheet);
+    const rows: any[][] = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: true });
+    if (!rows.length) return { success: false, error: 'No data found in Excel file' };
 
-    if (!jsonData || jsonData.length === 0) {
-      return { success: false, error: 'No data found in Excel file' };
-    }
+    const rawHeaders = rows[0];
+    const normalizedHeaders = rawHeaders.map((h: any) => normalizeHeader(String(h)));
 
-    const weeklyData: WeeklyData[] = jsonData.map((row: any) => {
-      const rawDate = row.date || row.Date;
-
-      return {
-        week: row.week || row.Week || "",
-        year: row.year || row.Year || "",
-        value: row.value != null ? Number(row.value) : 0,
-        goal: row.goal != null ? Number(row.goal) : undefined,
-        meetGoal: row.meetGoal != null ? Number(row.meetGoal) : undefined,
-        behindGoal: row.behindGoal != null ? Number(row.behindGoal) : undefined,
-        atRisk: row.atRisk != null ? Number(row.atRisk) : undefined,
-        date: normalizeDate(rawDate), 
-      };
+    // Map rows to objects
+    const bodyRows = rows.slice(1);
+    const jsonData = bodyRows.map((row: any[]) => {
+      const obj: any = {};
+      normalizedHeaders.forEach((key: string, i: number) => {
+        obj[key] = row[i] != null ? row[i] : null;
+      });
+      return obj;
     });
+
+    // Map to WeeklyData
+    const weeklyData: WeeklyData[] = jsonData.map((row: any) => ({
+      week: row.week || "",
+      year: row.year || "",
+      value: row.value != null ? Number(row.value) : 0,
+      goal: row.goal != null ? Number(row.goal) : undefined,
+      meetGoal: row.meetGoal != null ? Number(row.meetGoal) : undefined,
+      behindGoal: row.behindGoal != null ? Number(row.behindGoal) : undefined,
+      atRisk: row.atRisk != null ? Number(row.atRisk) : undefined,
+      date: normalizeDate(row.date),
+    }));
 
     return { success: true, data: weeklyData };
   } catch (error) {
@@ -68,14 +78,15 @@ export const processExcelFile = async (file: File): Promise<ExcelImportResult> =
   }
 };
 
+/** Export WeeklyData to Excel */
 export const exportToExcel = (data: WeeklyData[], filename: string) => {
   const cleaned = data.map((row) => ({
-    date: row.date || "",
-    value: row.value ?? 0,
-    goal: row.goal ?? "",
-    meetGoal: row.meetGoal ?? "",
-    behindGoal: row.behindGoal ?? "",
-    atRisk: row.atRisk ?? "",
+    Date: row.date || "",
+    Value: row.value ?? 0,
+    Goal: row.goal ?? "",
+    MeetGoal: row.meetGoal ?? "",
+    BehindGoal: row.behindGoal ?? "",
+    AtRisk: row.atRisk ?? "",
   }));
 
   const worksheet = XLSX.utils.json_to_sheet(cleaned);
@@ -83,5 +94,3 @@ export const exportToExcel = (data: WeeklyData[], filename: string) => {
   XLSX.utils.book_append_sheet(workbook, worksheet, "KPI Data");
   XLSX.writeFile(workbook, filename);
 };
-
-

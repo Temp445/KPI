@@ -13,8 +13,10 @@ import ToggleSetting from '../FiltersButton/ToggleSetting';
 import { toast } from '@/hooks/use-toast';
 import { months } from '@/utils/clampEndMonthYear';
 import { exportToExcel } from '@/utils/excelProcessor';
+import { useAuth } from '@/context/authContext';
 
 export function Dashboard() {
+  const { user } = useAuth();
   const { kpiData, setKPIData, loading, setLoading, filters } = useDashboardStore();
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [selectedKPI, setSelectedKPI] = useState<string | null>(null);
@@ -74,15 +76,31 @@ export function Dashboard() {
 
       const cats = categories ?? [];
 
+      
+
       const kpiDataPromises = cats.map(async (category) => {
         const { data: metric } = await supabase
           .from('kpi_metrics')
           .select('*')
           .eq('category_id', category.id)
 
-        let chartData: WeeklyData[] = [];
+          const { data: weeklyData } = await supabase
+            .from('kpi_weekly_data')
+            .select('*')
+            .eq('metric_id', metric?.[0]?.id)
+            .order('date', { ascending: true });
+          
+          const chartData: WeeklyData[] = (weeklyData || []).map((row: any) => ({
+            week: row.week_number?.toString() || "",
+            year: row.year?.toString() || "",
+            value: row.value ?? 0,
+            goal: row.goal ?? undefined,
+            meetGoal: row.meet_goal ?? undefined,
+            behindGoal: row.behind_goal ?? undefined,
+            atRisk: row.at_risk ?? undefined,
+            date: row.date,
+          }));
 
-      
         const { data: actionPlans } = await supabase
           .from('action_plans')
           .select('*')
@@ -155,28 +173,60 @@ export function Dashboard() {
   }
 };
 
+const filterChartDataByRange = (data: WeeklyData[], startYear: number, startMonth: string, endYear: number, endMonth: string) => {
+  const startDate = new Date(startYear, months.indexOf(startMonth), 1);
+  const endDate = new Date(endYear, months.indexOf(endMonth) + 1, 0); 
+  return data.filter(d => {
+    const dt = new Date(d.date);
+    return dt >= startDate && dt <= endDate;
+  });
+};
+
 const handleDownload = (metricId: string) => {
+  if (!user) {
+    toast({
+      title: "Not Logged In",
+      description: "You must be logged in to download data.",
+      variant: "destructive",
+    });
+    return;
+  }
+
   const metric = kpiData
     .flatMap(k => k.metrics.allMetrics)
     .find(m => m?.id === metricId);
 
   const kpi = kpiData.find(k => k.metrics.allMetrics?.some(m => m?.id === metricId));
-
   if (!kpi) return;
-  if (kpi.chartData.length === 0) {
-    alert("No data available to export");
+
+  const filteredData = filterChartDataByRange(
+    kpi.chartData,
+    Number(filters.startYear),
+    filters.startMonth,
+    Number(filters.endYear),
+    filters.endMonth
+  );
+
+  if (filteredData.length === 0) {
+    alert("No data available to export for selected filter range");
     return;
   }
 
   const metricName = metric?.title || metricId;
-
-  exportToExcel(
-    kpi.chartData,
-    `${metricName.replace(/\s+/g, "_")}-data.xlsx`
-  );
+  exportToExcel(filteredData, `${metricName.replace(/\s+/g, "_")}-data.xlsx`);
 };
 
   const handleImportData = async (data: WeeklyData[]) => {
+
+    if (!user) {
+    toast({
+      title: "Not Logged In",
+      description: "You must be logged in to import data.",
+      variant: "destructive",
+    });
+    return;
+  }
+
   if (!selectedKPI || !activeMetricId) return;
 
   try {

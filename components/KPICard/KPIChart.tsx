@@ -45,13 +45,13 @@ export function KPIChart({ data, title, color, type = 'bar' }: KPIChartProps) {
               <Bar dataKey="goal" fill="#10b981" name="Goal" />
             )}
             {data[0]?.meetGoal !== undefined && (
-              <Bar dataKey="meetGoal" fill="#10b981" name="Meet Goal" />
+              <Bar dataKey="meetgoal" fill="#10b981" name="Meet Goal" />
             )}
             {data[0]?.behindGoal !== undefined && (
-              <Bar dataKey="behindGoal" fill="#f59e0b" name="Behind Goal" />
+              <Bar dataKey="behindgoal" fill="#f59e0b" name="Behind Goal" />
             )}
             {data[0]?.atRisk !== undefined && (
-              <Bar dataKey="atRisk" fill="#ef4444" name="At Risk" />
+              <Bar dataKey="atrisk" fill="#ef4444" name="At Risk" />
             )}
             <Bar dataKey="value" fill={color} name="Value" />
           </BarChart>
