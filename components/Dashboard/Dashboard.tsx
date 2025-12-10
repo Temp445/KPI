@@ -12,6 +12,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import ToggleSetting from '../FiltersButton/ToggleSetting';
 import { toast } from '@/hooks/use-toast';
 import { months } from '@/utils/clampEndMonthYear';
+import { exportToExcel } from '@/utils/excelProcessor';
 
 export function Dashboard() {
   const { kpiData, setKPIData, loading, setLoading, filters } = useDashboardStore();
@@ -263,6 +264,27 @@ export function Dashboard() {
   }
 };
 
+const handleDownload = (metricId: string) => {
+  const metric = kpiData
+    .flatMap(k => k.metrics.allMetrics)
+    .find(m => m?.id === metricId);
+
+  const kpi = kpiData.find(k => k.metrics.allMetrics?.some(m => m?.id === metricId));
+
+  if (!kpi) return;
+  if (kpi.chartData.length === 0) {
+    alert("No data available to export");
+    return;
+  }
+
+  const metricName = metric?.title || metricId;
+
+  exportToExcel(
+    kpi.chartData,
+    `${metricName.replace(/\s+/g, "_")}-data.xlsx`
+  );
+};
+
 
   const handleImportData = async (data: WeeklyData[]) => {
   if (!selectedKPI || !activeMetricId) return;
@@ -398,8 +420,8 @@ export function Dashboard() {
           }}
           onImport={handleImportData}
           kpiTitle={selectedKPIData.title}
-           filters={filters} 
-           selectedKPIData={{ metricId: selectedKPIData.metricId! }}
+          selectedKPIData={{ metricId: activeMetricId! }}
+          onDownload={handleDownload}
         />
       )}
     </div>

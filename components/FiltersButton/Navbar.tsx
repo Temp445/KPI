@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 export const Navbar = () => {
-  const { user,signOut } = useAuth();
+  const { user, signOut } = useAuth();
   const router = useRouter();
   const [signedIn, setSignedIn] = useState(false);
 
@@ -21,19 +21,24 @@ export const Navbar = () => {
       </Link>
 
       <div className="gap-5 flex">
-        
-          <Link
-            href="/manage-pillars"
-            className="font-semibold text-sm border p-1.5 rounded"
-          >
-            Create New Pillars
-          </Link>
-          <Link
-            href="/manage-kpi"
-            className="font-semibold text-sm border p-1.5 rounded"
-          >
-            Create New KPI
-          </Link>    
+        <Link
+          href="/manage-pillars"
+          className="font-semibold text-sm border p-1.5 rounded"
+        >
+          Create New Pillars
+        </Link>
+        <Link
+          href="/manage-kpi"
+          className="font-semibold text-sm border p-1.5 rounded"
+        >
+          Create New KPI
+        </Link>
+        <Link
+          href="/manage-action-plan"
+          className="font-semibold text-sm border p-1.5 rounded"
+        >
+          Add New Action Plans
+        </Link>
 
         {signedIn ? (
           <button

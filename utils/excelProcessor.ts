@@ -1,6 +1,5 @@
 import * as XLSX from 'xlsx';
 import { WeeklyData } from '@/types/dashboard';
-import { supabase } from '@/lib/supabase';
 
 export interface ExcelImportResult {
   success: boolean;
@@ -28,8 +27,7 @@ function normalizeDate(raw: any): string {
   if (!isNaN(parsed.getTime())) {
     return parsed.toISOString().split("T")[0];
   }
-
-  return ""; // fallback
+  return ""; 
 }
 
 export const processExcelFile = async (file: File): Promise<ExcelImportResult> => {
@@ -86,55 +84,4 @@ export const exportToExcel = (data: WeeklyData[], filename: string) => {
   XLSX.writeFile(workbook, filename);
 };
 
-
-
-export const generateExcelTemplate = async (
-  filters: any,
-  categoryTitle: string,
-  metricId: string
-) => {
-  try {
-    const months = [
-      "January", "February", "March", "April", "May", "June",
-      "July", "August", "September", "October", "November", "December"
-    ];
-
-    const start = new Date(filters.startYear, months.indexOf(filters.startMonth), 1);
-    const end = new Date(filters.endYear, months.indexOf(filters.endMonth) + 1, 0);
-
-    const startDate = start.toISOString().split("T")[0];
-    const endDate = end.toISOString().split("T")[0];
-
-    const { data, error } = await supabase
-      .from("kpi_weekly_data")
-      .select("*")
-      .eq("metric_id", metricId)
-      .gte("date", startDate)
-      .lte("date", endDate)
-      .order("date", { ascending: true });
-
-    if (error) {
-      console.error("Template fetch error:", error);
-      return;
-    }
-
-    const cleaned = (data || []).map((row: any) => ({
-      date: row.date || "",
-      value: Number(row.value) || 0,
-      goal: row.goal ?? 0,
-      meetGoal: row.meet_goal ?? 0,
-      behindGoal: row.behind_goal ?? 0,
-      atRisk: row.at_risk ?? 0,
-    }));
-
-
-    const worksheet = XLSX.utils.json_to_sheet(cleaned);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, categoryTitle.substring(0, 30));
-
-    XLSX.writeFile(workbook, `kpi-template-${categoryTitle}.xlsx`);
-  } catch (err) {
-    console.error("Error generating template:", err);
-  }
-};
 

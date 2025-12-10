@@ -17,7 +17,6 @@ import { useState } from "react";
 import ToggleSwitch from "../FiltersButton/ToggleSwitch";
 import ToggleMenu from "../FiltersButton/ToggleMenu";
 import { supabase } from "@/lib/supabase";
-import { exportToExcel } from "@/utils/excelProcessor";
 
 type SegmentColor =
   | "red"
@@ -31,7 +30,7 @@ interface KPICardProps {
   onUpload?: (id: string) => void;
 }
 
-export function KPICard({ data, onUpload }: KPICardProps) {
+export function KPICard({ data, onUpload}: KPICardProps) {
   const { filters } = useDashboardStore();
   const [activeSegment, setActiveSegment] = useState<number | null>(null);
   const [rotateEnabled, setRotateEnabled] = useState(true);
@@ -310,26 +309,8 @@ export function KPICard({ data, onUpload }: KPICardProps) {
               </option>
             ))}
           </select>
-          <button
-            className="text-gray-400 hover:text-gray-600"
-            onClick={() => {
-              if (selectedChartData.length === 0) {
-                alert("No data available to export");
-                return;
-              }
+  
 
-              const metricName =
-                data.metrics.allMetrics?.find((m) => m.id === selectedMetric)
-                  ?.title || selectedMetric;
-
-              exportToExcel(
-                selectedChartData,
-                `${metricName.replace(/\s+/g, "_")}-data.xlsx`
-              );
-            }}
-          >
-            <Upload className="w-4 h-4" />
-          </button>
         </div>
 
         <KPIChart

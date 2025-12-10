@@ -9,11 +9,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Upload, FileSpreadsheet, Download, X } from "lucide-react";
-import {
-  processExcelFile,
-  exportToExcel,
-  generateExcelTemplate,
-} from "@/utils/excelProcessor";
+import { processExcelFile } from "@/utils/excelProcessor";
 import { WeeklyData } from "@/types/dashboard";
 
 interface ExcelImportProps {
@@ -21,8 +17,8 @@ interface ExcelImportProps {
   onClose: () => void;
   onImport: (data: WeeklyData[]) => void;
   kpiTitle: string;
-  filters: any;
   selectedKPIData?: { metricId: string };
+  onDownload?: (metricId: string) => void;
 }
 
 export function ExcelImport({
@@ -30,8 +26,8 @@ export function ExcelImport({
   onClose,
   onImport,
   kpiTitle,
-  filters,
   selectedKPIData,
+  onDownload
 }: ExcelImportProps) {
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
@@ -106,18 +102,12 @@ export function ExcelImport({
             <Button
               variant="outline"
               size="sm"
-              onClick={() => {
-                if (!selectedKPIData?.metricId) return;
-                generateExcelTemplate(
-                  filters,
-                  kpiTitle,
-                  selectedKPIData.metricId
-                );
-              }}
+              onClick={() => onDownload?.(selectedKPIData?.metricId!)}
             >
               <Download className="w-4 h-4 mr-2" />
               Download Template
             </Button>
+
           </div>
 
           <div
