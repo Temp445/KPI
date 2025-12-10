@@ -6,9 +6,9 @@ import { ExternalLink, Upload } from "lucide-react";
 import { KPIChart } from "./KPIChart";
 import { ActionPlanSection } from "../ActionPlan/ActionPlanSection";
 import { useDashboardStore } from "@/stores/dashboardStore";
-import {getDaysInMonth,getWeeksBetweenMonths,getWeeksInYear,getSelectedMonthLength} from "@/utils/dateCalculations";
+import { getDaysInMonth, getWeeksBetweenMonths, getWeeksInYear, getSelectedMonthLength } from "@/utils/dateCalculations";
 import CircleBand from "../KPICircleChart/CircleBand";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import ToggleSwitch from "../FiltersButton/ToggleSwitch";
 import ToggleMenu from "../FiltersButton/ToggleMenu";
 import { supabase } from "@/lib/supabase";
@@ -25,163 +25,124 @@ interface KPICardProps {
   onUpload?: (id: string) => void;
 }
 
-export function KPICard({ data, onUpload}: KPICardProps) {
+export function KPICard({ data, onUpload }: KPICardProps) {
   const { filters } = useDashboardStore();
   const [activeSegment, setActiveSegment] = useState<number | null>(null);
   const [rotateEnabled, setRotateEnabled] = useState(true);
-
   const [selectedMetric, setSelectedMetric] = useState<string>(data.metricId ?? "");
   const [selectedChartData, setSelectedChartData] = useState(data.chartData);
+
+  const months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+
+  useEffect(() => {
+    fetchMetricChartData(selectedMetric);
+  }, [filters, selectedMetric]);
 
   const fetchMetricChartData = async (metricId: string) => {
     if (!metricId) return;
 
-    const start = `${filters.startYear}-${String(
-      months.indexOf(filters.startMonth) + 1
-    ).padStart(2, "0")}-01`;
-    const end = `${filters.endYear}-${String(
-      months.indexOf(filters.endMonth) + 1
-    ).padStart(2, "0")}-31`;
+    try {
+      const start = `${filters.startYear}-${String(months.indexOf(filters.startMonth) + 1).padStart(2, "0")}-01`;
+      const end = `${filters.endYear}-${String(months.indexOf(filters.endMonth) + 1).padStart(2, "0")}-31`;
 
-    const { data: rows } = await supabase
-      .from("kpi_weekly_data")
-      .select("*")
-      .eq("metric_id", metricId)
-      .gte("date", start)
-      .lte("date", end)
-      .order("date", { ascending: true });
+      const { data: rows } = await supabase
+        .from("kpi_weekly_data")
+        .select("*")
+        .eq("metric_id", metricId)
+        .gte("date", start)
+        .lte("date", end)
+        .order("date", { ascending: true });
 
-    const newData =
-      rows?.map((d: any) => ({
-        week: `WK${d.week_number}`,
-        year: d.year,
-        value: Number(d.value) || 30,
-        goal: d.goal ?? undefined,
-        meetGoal: d.meet_goal ?? undefined,
-        behindGoal: d.behind_goal ?? undefined,
-        atRisk: d.at_risk ?? undefined,
-        date: d.date,
-      })) ?? [];
+      const newData = rows?.map((d: any) => {
+        const dt = new Date(d.date);
+        let weekLabel = "";
+        if (filters.timePeriod === "daily") {
+          weekLabel = `D${String(dt.getDate()).padStart(2, "0")}`;
+        } else if (filters.timePeriod === "weekly") {
+          const weekNumber = Math.ceil(((dt.getTime() - new Date(dt.getFullYear(), 0, 1).getTime()) / 86400000 + 1) / 7);
+          weekLabel = `WK${weekNumber}`;
+        } else if (filters.timePeriod === "monthly") {
+          weekLabel = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}`;
+        }
 
-    setSelectedChartData(newData);
-  };
+        return {
+          week: weekLabel,
+          year: dt.getFullYear(),
+          value: Number(d.value) || 0,
+          goal: d.goal ?? undefined,
+          meetGoal: d.meet_goal ?? undefined,
+          behindGoal: d.behind_goal ?? undefined,
+          atRisk: d.at_risk ?? undefined,
+          date: d.date,
+        };
+      }) ?? [];
 
-  const handleBoxClick = (pillar: string, idx: number) => {
-    alert(`${pillar}: segment ${idx + 1}`);
-  };
-
-  const getNumbersToDisplay = () => {
-    switch (filters.timePeriod) {
-      case "daily":
-        return getDaysInMonth(filters.startMonth, filters.startYear);
-      case "monthly":
-        return getSelectedMonthLength(filters.startMonth,filters.startYear,filters.endMonth,filters.endYear);
-      case "weekly":
-        return getWeeksBetweenMonths(filters.startMonth,filters.startYear,filters.endMonth,filters.endYear);
-      default:
-        return getWeeksInYear(filters.startYear);
+      setSelectedChartData(newData);
+    } catch (error) {
+      console.error("Error fetching KPI data", error);
     }
   };
 
-  const maxNumbers = getNumbersToDisplay();
-  const segmentCount = Math.min(maxNumbers);
+  const filterChartDataByRange = (data: typeof selectedChartData) => {
+    const startDate = new Date(filters.startYear, months.indexOf(filters.startMonth), 1);
+    const endDate = new Date(filters.endYear, months.indexOf(filters.endMonth) + 1, 0);
+    return data.filter(d => {
+      const dt = new Date(d.date);
+      return dt >= startDate && dt <= endDate;
+    });
+  };
 
-  const months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  const emptyWeeklyData: typeof selectedChartData[number] = {
+  week: "",
+  year: 0,
+  value: 0,
+  goal: 0,
+  meetGoal: 0,
+  date: "",
+};
 
-  //  segment positions mapping
+
   const mapChartDataToSegments = () => {
-    const mapped: typeof selectedChartData = [];
-    const totalSegments = getNumbersToDisplay();
+    const filteredData = filterChartDataByRange(selectedChartData);
+    let mapped: typeof selectedChartData = [];
 
-    for (let i = 0; i < totalSegments; i++) {
-      const position = i + 1;
-      let found: any;
-
-      if (filters.timePeriod === "daily") {
-        found = selectedChartData.find(
-          (d) =>
-            new Date(d.date) >=
-              new Date(
-                filters.startYear,
-                months.indexOf(filters.startMonth),
-                1
-              ) &&
-            new Date(d.date) <=
-              new Date(
-                filters.endYear,
-                months.indexOf(filters.endMonth) + 1,
-                0
-              ) &&
-            new Date(d.date).getDate() === position
-        );
-      } else if (filters.timePeriod === "weekly") {
-        found = selectedChartData.find((d) => {
+    if (filters.timePeriod === "daily") {
+      const days = getDaysInMonth(filters.startMonth, filters.startYear);
+      mapped = Array.from({ length: days }, (_, i) => {
+        const position = i + 1;
+        const found = filteredData.find(d => new Date(d.date).getDate() === position);
+        return found ?? emptyWeeklyData;
+      });
+    } else if (filters.timePeriod === "weekly") {
+      const totalWeeks = getWeeksBetweenMonths(filters.startMonth, filters.startYear, filters.endMonth, filters.endYear);
+      mapped = Array.from({ length: totalWeeks }, (_, i) => {
+        const position = i + 1;
+        const found = filteredData.find(d => {
           const dt = new Date(d.date);
-
-          const firstDayOfMonth = new Date(dt.getFullYear(), dt.getMonth(), 1);
-          const dayOfMonth = dt.getDate();
-          const localWeek = Math.ceil(
-            (dayOfMonth + firstDayOfMonth.getDay()) / 7
-          );
-
-          // Start of filter range
-          const startDate = new Date(
-            filters.startYear,
-            months.indexOf(filters.startMonth),
-            1
-          );
-
-          const totalMonthsDiff =
-            (dt.getFullYear() - startDate.getFullYear()) * 12 +
-            (dt.getMonth() - startDate.getMonth());
-
-          const safeMonths = Math.max(0, totalMonthsDiff);
-          
-          const cumulativeWeekOffset = Array.from({
-            length: safeMonths,
-          }).reduce((acc: number, _, idx) => {
-            const m = new Date(
-              startDate.getFullYear(),
-              startDate.getMonth() + idx,
-              1
-            );
-            const days = new Date(
-              m.getFullYear(),
-              m.getMonth() + 1,
-              0
-            ).getDate();
-
-            const weekCount = Math.ceil(
-              (days + new Date(m.getFullYear(), m.getMonth(), 1).getDay()) / 7
-            );
-
-            return acc + weekCount;
-          }, 0);
-
-          const relativePosition = cumulativeWeekOffset + localWeek;
-
-          return relativePosition === position;
+          const startDate = new Date(filters.startYear, months.indexOf(filters.startMonth), 1);
+          const weekNumber = Math.ceil(((dt.getTime() - startDate.getTime()) / 86400000 + 1) / 7);
+          return weekNumber === position;
         });
-      }  else if (filters.timePeriod === "monthly") {
-  found = selectedChartData.find((d) => {
-    const dt = new Date(d.date);
-
-    const totalMonths =
-      (filters.endYear - filters.startYear) * 12 +
-      (months.indexOf(filters.endMonth) - months.indexOf(filters.startMonth)) + 1;
-
-    // Limit position to actual available months
-    if (position > totalMonths) return false;
-
-    const monthIndex =
-      (dt.getFullYear() - filters.startYear) * 12 +
-      (dt.getMonth() - months.indexOf(filters.startMonth)) + 1;
-
-    return monthIndex === position;
-  });
-}
-
-      mapped.push(found ?? { value: 0, goal: 0, date: "" });
+        return found ?? emptyWeeklyData;
+      });
+    } else if (filters.timePeriod === "monthly") {
+      const totalMonths = getSelectedMonthLength(filters.startMonth, filters.startYear, filters.endMonth, filters.endYear);
+      mapped = Array.from({ length: totalMonths }, (_, i) => {
+        const position = i;
+        const found = filteredData.find(d => {
+          const dt = new Date(d.date);
+          const monthIndex = (dt.getFullYear() - filters.startYear) * 12 + dt.getMonth() - months.indexOf(filters.startMonth);
+          return monthIndex === position;
+        });
+        return found ?? emptyWeeklyData;
+      });
+    } else {
+      const totalWeeks = getWeeksInYear(filters.startYear);
+      mapped = Array.from({ length: totalWeeks }, (_, i) => {
+        const position = i + 1;
+        const found = filteredData[i];
+        return found ?? emptyWeeklyData;
+      });
     }
 
     return mapped;
@@ -189,12 +150,11 @@ export function KPICard({ data, onUpload}: KPICardProps) {
 
   const mappedChartData = mapChartDataToSegments();
 
-  const colors: SegmentColor[] = mappedChartData.map((weekData) => {
-    const isGoal = weekData?.goal && weekData.value >= weekData.goal;
-    const isBehind =
-      weekData?.behindGoal && weekData.value < (weekData.goal || 0);
-    const isAtRisk =
-      weekData?.atRisk && weekData.value < (weekData.goal || 0) * 0.9;
+  const colors: SegmentColor[] = mappedChartData.map(weekData => {
+    if (!weekData.value) return "white"; // No data
+    const isGoal = weekData.goal && weekData.value >= weekData.goal;
+    const isBehind = weekData.behindGoal && weekData.value < (weekData.goal || 0);
+    const isAtRisk = weekData.atRisk && weekData.value < (weekData.goal || 0) * 0.9;
 
     if (isAtRisk) return "red";
     if (isBehind) return "amber";
@@ -207,24 +167,24 @@ export function KPICard({ data, onUpload}: KPICardProps) {
   const [startRing, setStartRing] = useState<"outer" | "inner">("outer");
   const [length, setLength] = useState<1 | 2 | 3>(1);
 
+  const segmentCount = mappedChartData.length;
+
+  const handleBoxClick = (pillar: string, idx: number) => {
+    alert(`${pillar}: segment ${idx + 1}`);
+  };
+
   return (
     <Card className="shadow-lg hover:shadow-xl transition-shadow">
-      <div
-        className="p-2 rounded-t-lg relative group"
-        style={{ backgroundColor: data.color }}
-      >
+      <div className="p-2 rounded-t-lg relative group" style={{ backgroundColor: data.color }}>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-white text-xl font-semibold">{data.category}</h2>
 
           <div className="flex items-center 2xl:gap-2">
             <ToggleSwitch checked={rotateEnabled} onChange={setRotateEnabled} />
-
             <div>
               <button
                 className="text-white hover:bg-white/20 p-2 rounded-md transition-colors"
-                onClick={() =>
-                  onUpload?.(`${data.id}:${selectedMetric}:import`)
-                }
+                onClick={() => onUpload?.(`${data.id}:${selectedMetric}:import`)}
               >
                 <ExternalLink className="w-5 h-5" />
               </button>
@@ -237,8 +197,7 @@ export function KPICard({ data, onUpload}: KPICardProps) {
                 setLength={(val: number) => setLength(val as 1 | 2 | 3)}
                 length={length}
                 showRange={
-                  (filters.timePeriod === "monthly" &&
-                    mappedChartData.length >= 4) ||
+                  (filters.timePeriod === "monthly" && mappedChartData.length >= 4) ||
                   filters.timePeriod === "weekly" ||
                   filters.timePeriod === "daily"
                 }
@@ -260,9 +219,7 @@ export function KPICard({ data, onUpload}: KPICardProps) {
             startRing={startRing}
             length={length}
             tooltipRenderer={(i) => (
-              <div>
-                {data.icon}: Segment {i + 1}
-              </div>
+              <div>{data.icon}: Segment {i + 1}</div>
             )}
             onSegmentClick={(i) => handleBoxClick?.(data.icon, i)}
           />
@@ -275,26 +232,20 @@ export function KPICard({ data, onUpload}: KPICardProps) {
             className="text-sm border border-gray-300 rounded-md px-3 py-1.5"
             value={selectedMetric}
             onChange={(e) => {
+              e.preventDefault();
               setSelectedMetric(e.target.value);
               fetchMetricChartData(e.target.value);
             }}
           >
-            {data.metrics.allMetrics?.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.title}
-              </option>
+            {data.metrics.allMetrics?.map(m => (
+              <option key={m.id} value={m.id}>{m.title}</option>
             ))}
           </select>
-  
-
         </div>
 
         <KPIChart
           data={selectedChartData}
-          title={
-            data.metrics.allMetrics?.find((m) => m.id === selectedMetric)
-              ?.title || data.metrics.primary
-          }
+          title={data.metrics.allMetrics?.find(m => m.id === selectedMetric)?.title || data.metrics.primary}
           color={data.color}
         />
 

@@ -20,7 +20,6 @@ export function Dashboard() {
   const [selectedKPI, setSelectedKPI] = useState<string | null>(null);
   const [activeMetricId, setActiveMetricId] = useState<string | null>(null);
 
-
   const [allowOverflow, setAllowOverflow] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
       const stored = localStorage.getItem('allowOverflow');
@@ -49,7 +48,7 @@ export function Dashboard() {
 
   useEffect(() => {
     loadDashboardData();
-  }, [filters]);
+  }, []);
 
   const loadDashboardData = async () => {
     setLoading(true);
@@ -65,9 +64,6 @@ export function Dashboard() {
         Math.max(0, months.indexOf(filters.endMonth)) + 1,
         0
       );
-
-      const startDate = start.toISOString().split('T')[0]; 
-      const endDate = end.toISOString().split('T')[0];
 
       const { data: categories, error: categoriesError } = await supabase
         .from('kpi_categories')
@@ -86,111 +82,7 @@ export function Dashboard() {
 
         let chartData: WeeklyData[] = [];
 
-        if (metric) {
-          const { data: rawRows } = await supabase
-            .from('kpi_weekly_data')
-            .select('*')
-            .eq('metric_id', metric?.[0]?.id)
-            .gte('date', startDate)
-            .lte('date', endDate)
-            .order('date', { ascending: true });
-
-          const rows = rawRows ?? [];
-
-          // DAILY
-          if (filters.timePeriod === 'daily') {
-            chartData = rows.map((d: any) => ({
-              week: `D${String(new Date(d.date).getDate()).padStart(2, "0")}`,
-              year: Number(d.year) || new Date(d.date).getFullYear(),
-              value: Number(d.value) || 0,
-              goal: d.goal != null ? Number(d.goal) : undefined,
-              meetGoal: d.meet_goal != null ? Number(d.meet_goal) : undefined,
-              behindGoal: d.behind_goal != null ? Number(d.behind_goal) : undefined,
-              atRisk: d.at_risk != null ? Number(d.at_risk) : undefined,
-              date: d.date,
-            }));
-          }
-
-          // WEEKLY
-          if (filters.timePeriod === 'weekly') {
-            chartData = rows.map((d: any) => {
-              const dt = new Date(d.date);
-              const year = dt.getFullYear();
-              const weekNumber = Math.ceil(
-                ((dt.getTime() - new Date(year, 0, 1).getTime()) / 86400000 + 1) / 7
-              );
-
-              return {
-                week: `WK${weekNumber}`,
-                year,
-                value: Number(d.value) || 0,
-                goal: d.goal != null ? Number(d.goal) : undefined,
-                meetGoal: d.meet_goal != null ? Number(d.meet_goal) : undefined,
-                behindGoal: d.behind_goal != null ? Number(d.behind_goal) : undefined,
-                atRisk: d.at_risk != null ? Number(d.at_risk) : undefined,
-                date: d.date,
-              };
-            });
-          }
-
-          // MONTHLY
-          if (filters.timePeriod === 'monthly') {
-            const map = new Map<string, { year: number; month: number; value: number; goal: number; meetGoal: number; behindGoal: number; atRisk: number; date: string }>();
-
-            rows.forEach((d: any) => {
-              const dt = new Date(d.date);
-              const key = `${dt.getFullYear()}-${dt.getMonth() + 1}`;
-              if (!map.has(key)) {
-                map.set(key, {
-                  year: dt.getFullYear(),
-                  month: dt.getMonth() + 1,
-                  value: 0,
-                  goal: 0,
-                  meetGoal: 0,
-                  behindGoal: 0,
-                  atRisk: 0,
-                  date: d.date,
-                });
-              }
-              const obj = map.get(key)!;
-              obj.value += Number(d.value) || 0;
-              obj.goal += d.goal != null ? Number(d.goal) : 0;
-              obj.meetGoal += d.meet_goal != null ? Number(d.meet_goal) : 0;
-              obj.behindGoal += d.behind_goal != null ? Number(d.behind_goal) : 0;
-              obj.atRisk += d.at_risk != null ? Number(d.at_risk) : 0;
-            });
-
-            chartData = Array.from(map.entries()).map(([key, v]) => ({
-              week: `${v.year}-${String(v.month).padStart(2, '0')}`,
-              year: v.year,
-              value: v.value,
-              goal: v.goal || undefined,
-              meetGoal: v.meetGoal || undefined,
-              behindGoal: v.behindGoal || undefined,
-              atRisk: v.atRisk || undefined,
-              date: v.date,
-            }));
-          }
-        }
-
-        // if empty
-        if (!chartData || chartData.length === 0) {
-          chartData = Array.from({ length: 8 }, (_, i) => {
-            const year = filters.startYear ?? new Date().getFullYear();
-            return {
-              week: "",
-              year,
-              value: 0,
-              goal: 0,
-              meetGoal: 0,
-              behindGoal: 0,
-              atRisk: 0,
-              date: '',
-            } as WeeklyData;
-          });
-        }
-        
-
+      
         const { data: actionPlans } = await supabase
           .from('action_plans')
           .select('*')
@@ -283,7 +175,6 @@ const handleDownload = (metricId: string) => {
     `${metricName.replace(/\s+/g, "_")}-data.xlsx`
   );
 };
-
 
   const handleImportData = async (data: WeeklyData[]) => {
   if (!selectedKPI || !activeMetricId) return;

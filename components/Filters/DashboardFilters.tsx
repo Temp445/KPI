@@ -98,7 +98,6 @@ export function DashboardFilters() {
           }
 
           setFilters({
-            ...filters,
             startMonth: newStartMonth,
             startYear: newStartYear,
             endMonth: newEndMonth,
@@ -142,7 +141,6 @@ export function DashboardFilters() {
           }
 
           setFilters({
-            ...filters,
             endMonth: newEndMonth,
             endYear: newEndYear,
           });
@@ -152,6 +150,7 @@ export function DashboardFilters() {
 
       <div className="flex items-center bg-white dark:bg-gray-900 border border-gray-300 rounded-md overflow-hidden">
         <Button
+        type="button"
           variant="ghost"
           size="sm"
           className={`rounded-none px-4 ${
@@ -170,6 +169,7 @@ export function DashboardFilters() {
         </Button>
 
         <Button
+        type="button"
           variant="ghost"
           size="sm"
           className={`rounded-none px-4 ${
@@ -183,6 +183,7 @@ export function DashboardFilters() {
         </Button>
 
         <Button
+        type="button"
           variant="ghost"
           size="sm"
           className={`rounded-none px-4 ${
