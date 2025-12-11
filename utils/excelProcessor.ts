@@ -9,18 +9,39 @@ export interface ExcelImportResult {
 
 /** Convert Excel serial date → YYYY-MM-DD */
 function excelSerialToDate(serial: number): string {
-  const excelEpoch = new Date(1899, 11, 30);
-  const converted = new Date(excelEpoch.getTime() + serial * 86400000);
-  return converted.toISOString().split("T")[0];
+  const excelEpoch = new Date(Date.UTC(1899, 11, 30));
+  const utcDays = serial * 86400000;
+  const result = new Date(excelEpoch.getTime() + utcDays);
+
+  return result.toISOString().split("T")[0]; 
+}
+
+function parseLocalDate(raw: string): string {
+  const [month, day, year] = raw.split("/").map(Number);
+  const d = new Date(Date.UTC(year, month - 1, day)); 
+  return d.toISOString().split("T")[0];
 }
 
 /** Normalize any date input into YYYY-MM-DD */
 function normalizeDate(raw: any): string {
   if (!raw) return "";
+
   if (typeof raw === "number") return excelSerialToDate(raw);
+
+  if (typeof raw === "string" && raw.includes("/")) return parseLocalDate(raw);
+
   const parsed = new Date(raw);
-  return isNaN(parsed.getTime()) ? "" : parsed.toISOString().split("T")[0];
+  if (!isNaN(parsed.getTime())) {
+    return new Date(Date.UTC(
+      parsed.getFullYear(),
+      parsed.getMonth(),
+      parsed.getDate()
+    )).toISOString().split("T")[0];
+  }
+
+  return "";
 }
+
 
 /** Normalize Excel headers → lowercase or camelCase */
 function normalizeHeader(header: string): string {
