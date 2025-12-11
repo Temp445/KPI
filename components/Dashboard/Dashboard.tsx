@@ -230,6 +230,7 @@ const handleDownload = (metricId: string) => {
   if (!selectedKPI || !activeMetricId) return;
 
   try {
+    setLoading(true);
     const metricId = activeMetricId;   
 
     const formattedRows = data.map((row) => {
@@ -289,6 +290,8 @@ const handleDownload = (metricId: string) => {
       description: String(error),
       variant: "destructive",
     });
+  } finally {
+    setLoading(false);
   }
 };
 
