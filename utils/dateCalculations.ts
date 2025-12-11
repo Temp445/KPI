@@ -15,6 +15,20 @@ export function getWeeksInYear(year: number): number {
   return weekNumber === 53 ? 53 : 52;
 }
 
+
+/** Returns YYYY-MM-DD for the first day of the given monthName/year */
+export function getMonthStartISO(monthName: string, year: number): string {
+  const monthIndex = getMonthIndex(monthName);
+  return new Date(year, monthIndex, 1).toISOString().split("T")[0];
+}
+
+/** Returns YYYY-MM-DD for the last day of the given monthName/year */
+export function getMonthEndISO(monthName: string, year: number): string {
+  const monthIndex = getMonthIndex(monthName);
+  return new Date(year, monthIndex + 1, 0).toISOString().split("T")[0];
+}
+
+
 export function getWeeksBetweenMonths(
   startMonth: string,
   startYear: number,

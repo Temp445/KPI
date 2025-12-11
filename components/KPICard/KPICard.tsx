@@ -6,7 +6,7 @@ import { ExternalLink, Upload } from "lucide-react";
 import { KPIChart } from "./KPIChart";
 import { ActionPlanSection } from "../ActionPlan/ActionPlanSection";
 import { useDashboardStore } from "@/stores/dashboardStore";
-import { getDaysInMonth, getWeeksBetweenMonths, getWeeksInYear, getSelectedMonthLength } from "@/utils/dateCalculations";
+import { getDaysInMonth, getWeeksBetweenMonths, getWeeksInYear, getSelectedMonthLength, getMonthStartISO, getMonthEndISO, getMonthIndex } from "@/utils/dateCalculations";
 import CircleBand from "../KPICircleChart/CircleBand";
 import { useEffect, useState } from "react";
 import ToggleSwitch from "../FiltersButton/ToggleSwitch";
@@ -32,7 +32,6 @@ export function KPICard({ data, onUpload }: KPICardProps) {
   const [selectedMetric, setSelectedMetric] = useState<string>(data.metricId ?? "");
   const [selectedChartData, setSelectedChartData] = useState(data.chartData);
 
-  const months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 
   useEffect(() => {
     fetchMetricChartData(selectedMetric);
@@ -42,8 +41,9 @@ export function KPICard({ data, onUpload }: KPICardProps) {
     if (!metricId) return;
 
     try {
-      const start = `${filters.startYear}-${String(months.indexOf(filters.startMonth) + 1).padStart(2, "0")}-01`;
-      const end = `${filters.endYear}-${String(months.indexOf(filters.endMonth) + 1).padStart(2, "0")}-31`;
+    const startMonthIndex = getMonthIndex(filters.startMonth);
+    const start = getMonthStartISO(filters.startMonth, filters.startYear);
+    const end = getMonthEndISO(filters.endMonth, filters.endYear);
 
       const { data: rows } = await supabase
         .from("kpi_weekly_data")
@@ -53,13 +53,14 @@ export function KPICard({ data, onUpload }: KPICardProps) {
         .lte("date", end)
         .order("date", { ascending: true });
 
-      const newData = rows?.map((d: any) => {
+      const newData = (rows ?? []).map((d: any) => {
         const dt = new Date(d.date);
         let weekLabel = "";
         if (filters.timePeriod === "daily") {
           weekLabel = `D${String(dt.getDate()).padStart(2, "0")}`;
         } else if (filters.timePeriod === "weekly") {
-          const weekNumber = Math.ceil(((dt.getTime() - new Date(dt.getFullYear(), 0, 1).getTime()) / 86400000 + 1) / 7);
+          const rangeStart = new Date(filters.startYear, startMonthIndex, 1);
+          const weekNumber = Math.ceil(((dt.getTime() - rangeStart.getTime()) / 86400000 + 1) / 7);
           weekLabel = `WK${weekNumber}`;
         } else if (filters.timePeriod === "monthly") {
           weekLabel = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}`;
@@ -75,7 +76,7 @@ export function KPICard({ data, onUpload }: KPICardProps) {
           atRisk: d.at_risk ?? undefined,
           date: d.date,
         };
-      }) ?? [];
+      });
 
       setSelectedChartData(newData);
     } catch (error) {
@@ -84,11 +85,11 @@ export function KPICard({ data, onUpload }: KPICardProps) {
   };
 
   const filterChartDataByRange = (data: typeof selectedChartData) => {
-    const startDate = new Date(filters.startYear, months.indexOf(filters.startMonth), 1);
-    const endDate = new Date(filters.endYear, months.indexOf(filters.endMonth) + 1, 0);
+    const startDate = new Date(filters.startYear, getMonthIndex(filters.startMonth), 1);
+    const endDate = new Date(filters.endYear, getMonthIndex(filters.endMonth) + 1, 0);
     return data.filter(d => {
       const dt = new Date(d.date);
-      return dt >= startDate && dt <= endDate;
+      return dt.getTime() >= startDate.getTime() && dt.getTime() <= endDate.getTime();
     });
   };
 
@@ -106,6 +107,8 @@ export function KPICard({ data, onUpload }: KPICardProps) {
     const filteredData = filterChartDataByRange(selectedChartData);
     let mapped: typeof selectedChartData = [];
 
+    const startMonthIndex = getMonthIndex(filters.startMonth);
+
     if (filters.timePeriod === "daily") {
       const days = getDaysInMonth(filters.startMonth, filters.startYear);
       mapped = Array.from({ length: days }, (_, i) => {
@@ -119,8 +122,8 @@ export function KPICard({ data, onUpload }: KPICardProps) {
         const position = i + 1;
         const found = filteredData.find(d => {
           const dt = new Date(d.date);
-          const startDate = new Date(filters.startYear, months.indexOf(filters.startMonth), 1);
-          const weekNumber = Math.ceil(((dt.getTime() - startDate.getTime()) / 86400000 + 1) / 7);
+          const rangeStart = new Date(filters.startYear, startMonthIndex, 1);
+          const weekNumber = Math.ceil(((dt.getTime() - rangeStart.getTime()) / 86400000 + 1) / 7);
           return weekNumber === position;
         });
         return found ?? emptyWeeklyData;
@@ -131,7 +134,7 @@ export function KPICard({ data, onUpload }: KPICardProps) {
         const position = i;
         const found = filteredData.find(d => {
           const dt = new Date(d.date);
-          const monthIndex = (dt.getFullYear() - filters.startYear) * 12 + dt.getMonth() - months.indexOf(filters.startMonth);
+          const monthIndex = (dt.getFullYear() - filters.startYear) * 12 + dt.getMonth() - startMonthIndex;
           return monthIndex === position;
         });
         return found ?? emptyWeeklyData;
@@ -139,7 +142,6 @@ export function KPICard({ data, onUpload }: KPICardProps) {
     } else {
       const totalWeeks = getWeeksInYear(filters.startYear);
       mapped = Array.from({ length: totalWeeks }, (_, i) => {
-        const position = i + 1;
         const found = filteredData[i];
         return found ?? emptyWeeklyData;
       });
