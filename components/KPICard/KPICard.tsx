@@ -173,6 +173,13 @@ export function KPICard({ data, onUpload }: KPICardProps) {
     alert(`${pillar}: segment ${idx + 1}`);
   };
 
+
+  const hasNoData =
+  !selectedChartData ||
+  selectedChartData.length === 0 ||
+  selectedChartData.every(d => !d.value && !d.goal && !d.meetGoal && !d.behindGoal && !d.atRisk);
+
+
   return (
     <Card className="shadow-lg hover:shadow-xl transition-shadow">
       <div className="p-2 rounded-t-lg relative group" style={{ backgroundColor: data.color }}>
@@ -242,13 +249,18 @@ export function KPICard({ data, onUpload }: KPICardProps) {
             ))}
           </select>
         </div>
-
-        <KPIChart
+        
+        {hasNoData ? (
+          <div className="text-center text-gray-500 py-10 text-sm">
+            No data available.
+          </div>
+        ) : (
+          <KPIChart
           data={selectedChartData}
           title={data.metrics.allMetrics?.find(m => m.id === selectedMetric)?.title || data.metrics.primary}
           color={data.color}
         />
-
+      )}
         <ActionPlanSection
           actionPlans={data.actionPlans}
           counts={data.actionPlanCounts}
@@ -259,16 +271,22 @@ export function KPICard({ data, onUpload }: KPICardProps) {
           <div className="mt-4 pt-4 border-t">
             <div className="flex items-center justify-between mb-2">
               <h4 className="text-sm font-medium">{data.metrics.secondary}</h4>
-              <button className="text-gray-400 hover:text-gray-600">
+              {/* <button className="text-gray-400 hover:text-gray-600">
                 <Upload className="w-4 h-4" />
-              </button>
+              </button> */}
             </div>
+            {hasNoData ? (
+          <div className="text-center text-gray-500 py-10 text-sm">
+            No data available.
+          </div>
+        ) : (
             <KPIChart
               data={selectedChartData}
               title={data.metrics.secondary}
               color={data.color}
               type="line"
             />
+        )}
           </div>
         )}
       </div>
