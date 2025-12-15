@@ -19,51 +19,69 @@ import {
 interface KPIChartProps {
   data: WeeklyData[];
   title: string;
+  metricType?: string;
   color: string;
   type?: 'bar' | 'line' | 'area';
 }
 
-export function KPIChart({ data, title, color, type = 'bar' }: KPIChartProps) {
+export function KPIChart({ data, title, metricType, color, type = 'bar' }: KPIChartProps) {
   return (
-    <div className="w-full h-48">
-      <ResponsiveContainer width="100%" height="100%">
+    <div style={{ width: '100%', height: 250, paddingTop: '10px', paddingBottom: '10px', boxSizing: 'border-box', fontSize: '10px', textAlign: 'left', marginLeft: '0' }}>
+      <ResponsiveContainer  width="100%" height="100%">
         {type === 'bar' ? (
-          <BarChart data={data}>
+          <BarChart data={data}  margin={{ top: 5, right: 5, left: -15, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
             <XAxis
               dataKey="week"
               tick={{ fontSize: 10 }}
               stroke="#999"
+             padding={{ left: 10, right: 20 }}
+             
             />
-            <YAxis tick={{ fontSize: 10 }} stroke="#999" />
+            <YAxis  tick={{ fontSize: 10 }} stroke="#999" 
+            label={{
+              value: metricType,    
+              angle: -90,        
+              position: "outsideLeft",
+              style: { textAnchor: "middle", fontSize: 12, fill: "#555",paddingRight: '10px' },
+  }}
+            />
             <Tooltip />
             <Legend
               iconSize={10}
               wrapperStyle={{ fontSize: '10px' }}
             />
             {data[0]?.goal !== undefined && (
-              <Bar dataKey="goal" fill="#10b981" name="Goal" />
+              <Bar dataKey="goal" fill="#2aaaf4"  name="Goal" />
             )}
             {data[0]?.meetGoal !== undefined && (
-              <Bar dataKey="meetgoal" fill="#10b981" name="Meet Goal" />
+              <Bar dataKey="meetGoal" fill="#10b981" name="Meet Goal" />
             )}
             {data[0]?.behindGoal !== undefined && (
-              <Bar dataKey="behindgoal" fill="#f59e0b" name="Behind Goal" />
+              <Bar dataKey="behindGoal" fill="#f59e0b" name="Behind Goal" />
             )}
             {data[0]?.atRisk !== undefined && (
-              <Bar dataKey="atrisk" fill="#ef4444" name="At Risk" />
+              <Bar dataKey="atRisk" fill="#ef4444" name="At Risk" />
             )}
             <Bar dataKey="value" fill={color} name="Value" />
           </BarChart>
         ) : type === 'line' ? (
-          <LineChart data={data}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+          <LineChart data={data} margin={{ top: 5, right: 5, left: -15, bottom: 5 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#ddd" />
             <XAxis
               dataKey="week"
               tick={{ fontSize: 10 }}
               stroke="#999"
+              padding={{ left: 0, right: 0 }}
             />
-            <YAxis tick={{ fontSize: 10 }} stroke="#999" />
+            <YAxis tick={{ fontSize: 10 }} stroke="#999" 
+              label={{
+              value: metricType,    
+              angle: -90,        
+              position: "outsideLeft",
+              dx: -10,
+              style: { textAnchor: "middle", fontSize: 12, fill: "#555", paddingRight: '10px' },
+  }}/>
             <Tooltip />
             <Legend
               iconSize={10}
@@ -73,10 +91,41 @@ export function KPIChart({ data, title, color, type = 'bar' }: KPIChartProps) {
               <Line
                 type="monotone"
                 dataKey="goal"
-                stroke="#10b981"
+                stroke="#2aaaf4"
                 strokeWidth={2}
                 dot={{ r: 3 }}
                 name="Goal"
+              />
+            )}
+            {data[0]?.goal !== undefined && (
+              <Line
+                type="monotone"
+                dataKey="meetGoal"
+                stroke="#10b981"
+                strokeWidth={2}
+                dot={{ r: 3 }}
+                name="Meet Goal"
+              />
+            )}
+            {data[0]?.goal !== undefined && (
+              <Line
+                type="monotone"
+                dataKey="behindGoal"
+                stroke="#f59e0b"
+                strokeWidth={2}
+                dot={{ r: 3 }}
+                name="Behind Goal"
+              />
+            )}
+           
+            {data[0]?.goal !== undefined && (
+              <Line
+                type="monotone"
+                dataKey="atRisk"
+                stroke="#ef4444"
+                strokeWidth={2}
+                dot={{ r: 3 }}
+                name="At Risk"
               />
             )}
             <Line
@@ -89,14 +138,21 @@ export function KPIChart({ data, title, color, type = 'bar' }: KPIChartProps) {
             />
           </LineChart>
         ) : (
-          <AreaChart data={data}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+          <AreaChart data={data} margin={{ top: 5, right: 0, bottom: 5 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#ddd" />
             <XAxis
               dataKey="week"
               tick={{ fontSize: 10 }}
               stroke="#999"
+              padding={{ left: 0, right: 0 }}
             />
-            <YAxis tick={{ fontSize: 10 }} stroke="#999" />
+            <YAxis tick={{ fontSize: 10 }} stroke="#999"
+              label={{
+              value: metricType || "Count",  
+              angle: -90,
+              position: "outsideLeft",
+              style: { textAnchor: "middle", fontSize: 12, fill: "#555" }
+            }} />
             <Tooltip />
             <Legend
               iconSize={10}
@@ -106,7 +162,7 @@ export function KPIChart({ data, title, color, type = 'bar' }: KPIChartProps) {
               <Area
                 type="monotone"
                 dataKey="goal"
-                stroke="#10b981"
+                stroke="#2aaaf4"
                 fill="#10b98133"
                 name="Goal"
               />
@@ -138,6 +194,7 @@ export function KPIChart({ data, title, color, type = 'bar' }: KPIChartProps) {
             />
           </AreaChart>
         )}
+        
       </ResponsiveContainer>
     </div>
   );

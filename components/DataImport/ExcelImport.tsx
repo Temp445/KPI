@@ -11,23 +11,37 @@ import {
 import { Upload, FileSpreadsheet, Download, X } from "lucide-react";
 import { processExcelFile } from "@/utils/excelProcessor";
 import { WeeklyData } from "@/types/dashboard";
+import { ExcelCompareWithDB } from "./ExcelCompareWithDB";
+import { ExcelDuplicateCleaner } from "./ExcelDuplicateCleaner";
 
 interface ExcelImportProps {
   isOpen: boolean;
   onClose: () => void;
-  onImport: (data: WeeklyData[]) => void;
+  onImport: (data: WeeklyData[]) => Promise<{
+    status: "ok" | "duplicates" | "error";
+    duplicates?: string[];
+    newData?: WeeklyData[];
+    error?: any;
+  }>;
+  onReplaceDuplicates: (
+    finalData: WeeklyData[],
+    selectedDates: string[]
+  ) => Promise<any>;
   kpiTitle: string;
   selectedKPIData?: { metricId: string };
   onDownload?: (metricId: string) => void;
+  existingData?: WeeklyData[] | null;
 }
 
 export function ExcelImport({
   isOpen,
   onClose,
   onImport,
+  onReplaceDuplicates,
   kpiTitle,
   selectedKPIData,
-  onDownload
+  onDownload,
+  existingData,
 }: ExcelImportProps) {
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
@@ -36,6 +50,73 @@ export function ExcelImport({
   const [previewData, setPreviewData] = useState<WeeklyData[] | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const [duplicateDates, setDuplicateDates] = useState<string[] | null>(null);
+  const [pendingUploadData, setPendingUploadData] = useState<
+    WeeklyData[] | null
+  >(null);
+
+  const [isManual, setIsManual] = useState(false);
+  const [manualRows, setManualRows] = useState<WeeklyData[]>([
+    {
+      date: "",
+      value: 0,
+      goal: 0,
+      meetGoal: 0,
+      behindGoal: 0,
+      atRisk: 0,
+      year: "",
+      week: "",
+    },
+  ]);
+
+  const [internalDuplicateList, setInternalDuplicateList] = useState<
+    { date: string; rows: WeeklyData[] }[] | null
+  >(null);
+
+  // --- Utility functions ---
+  const updateRow = (index: number, field: keyof WeeklyData, value: any) => {
+    const newRows = [...manualRows];
+    newRows[index] = { ...newRows[index], [field]: value };
+    setManualRows(newRows);
+  };
+
+  const removeRow = (index: number) => {
+    const newRows = manualRows.filter((_, i) => i !== index);
+    setManualRows(
+      newRows.length
+        ? newRows
+        : [
+            {
+              date: "",
+              value: 0,
+              goal: 0,
+              meetGoal: 0,
+              behindGoal: 0,
+              atRisk: 0,
+              year: "",
+              week: "",
+            },
+          ]
+    );
+  };
+
+  const addRow = () => {
+    setManualRows([
+      ...manualRows,
+      {
+        date: "",
+        value: 0,
+        goal: 0,
+        meetGoal: 0,
+        behindGoal: 0,
+        atRisk: 0,
+        year: "",
+        week: "",
+      },
+    ]);
+  };
+
+  // --- File processing ---
   const processFile = async (selectedFile: File) => {
     setFile(selectedFile);
     setError(null);
@@ -70,11 +151,9 @@ export function ExcelImport({
     }
   };
 
-  const handleImport = () => {
-    if (previewData) {
-      onImport(previewData);
-      handleClose();
-    }
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
   };
 
   const handleClose = () => {
@@ -82,94 +161,197 @@ export function ExcelImport({
     setPreviewData(null);
     setError(null);
     setProgress(0);
+    setManualRows([
+      {
+        date: "",
+        value: 0,
+        goal: 0,
+        meetGoal: 0,
+        behindGoal: 0,
+        atRisk: 0,
+        year: "",
+        week: "",
+      },
+    ]);
+    setDuplicateDates(null);
+    setPendingUploadData(null);
     onClose();
   };
 
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
+  // --- Import functions ---
+  const handleImport = async () => {
+    if (!previewData) return;
+    // 1️⃣ Check duplicates inside Excel
+    const internalDupes = findInternalDuplicates(previewData);
+
+    if (internalDupes.length > 0) {
+      setInternalDuplicateList(internalDupes); // NEW STATE
+      return;
+    }
+
+    // 2️⃣ No internal duplicates → continue with backend import
+    const result = await onImport(previewData);
+
+    if (!result) return;
+
+    if (result.status === "duplicates") {
+      setDuplicateDates(result.duplicates ?? null);
+      setPendingUploadData(result.newData ?? null);
+      return;
+    }
+
+    if (result.status === "ok") {
+      handleClose();
+    }
   };
+
+  const handleManualImport = async () => {
+    const cleaned = manualRows.filter((r) => r.date.trim() !== "");
+    if (cleaned.length === 0) {
+      alert("Please enter at least one valid row");
+      return;
+    }
+
+    const result = await onImport(cleaned);
+    if (!result) return;
+
+    if (result.status === "duplicates") {
+      setDuplicateDates(result.duplicates ?? null);
+      setPendingUploadData(result.newData ?? null);
+      return;
+    }
+
+    if (result.status === "ok") {
+      handleClose();
+    }
+  };
+
+  function normalizeDate(date: any): string {
+    if (!date) return "";
+
+    if (date instanceof Date) {
+      return date.toISOString().slice(0, 10);
+    }
+
+    if (typeof date === "string") {
+      const d = new Date(date);
+      if (!isNaN(d.getTime())) {
+        return d.toISOString().slice(0, 10);
+      }
+    }
+
+    return "";
+  }
+
+  function findInternalDuplicates(data: WeeklyData[]) {
+    const map: Record<string, WeeklyData[]> = {};
+
+    for (const row of data) {
+      const dateKey = normalizeDate(row.date);
+      if (!dateKey) continue;
+
+      map[dateKey] ??= [];
+      map[dateKey].push({
+        ...row,
+        date: dateKey, // enforce normalized date
+      });
+    }
+
+    return Object.entries(map)
+      .filter(([, rows]) => rows.length > 1)
+      .map(([date, rows]) => ({ date, rows }));
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+      <DialogContent className="max-w-6xl h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Import Data for {kpiTitle}</DialogTitle>
-        </DialogHeader>
 
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onDownload?.(selectedKPIData?.metricId!)}
-            >
-              <Download className="w-4 h-4 mr-2" />
-              Download Template
-            </Button>
-
-          </div>
-
-          <div
-            className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-gray-400 transition-colors cursor-pointer"
-            onDragOver={handleDragOver}
-            onDrop={handleDrop}
-            onClick={() => fileInputRef.current?.click()}
-          >
-            <FileSpreadsheet className="w-16 h-16 mx-auto mb-4 text-gray-400" />
-            <p className="text-sm text-gray-600 mb-2">
-              Drag and drop your Excel file here, or click to browse
-            </p>
-            <p className="text-xs text-gray-500">
-              Supports .xlsx and .xls files
-            </p>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".xlsx,.xls"
-              onChange={handleFileSelect}
-              className="hidden"
-            />
-          </div>
-
-          {file && (
-            <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-md">
-              <FileSpreadsheet className="w-5 h-5 text-green-600" />
-              <span className="text-sm flex-1">{file.name}</span>
-              <button
+          {/* Toggle Upload / Manual */}
+          <div className="flex items-center justify-between pt-5">
+            <div className="flex gap-2">
+              <Button
+                variant={isManual ? "outline" : "green"}
+                size="sm"
                 onClick={() => {
+                  setIsManual(false);
+                  setFile(null);
+                  setPreviewData(null);
+                  setDuplicateDates(null);
+                  setPendingUploadData(null);
+                  setManualRows([
+                    {
+                      date: "",
+                      value: 0,
+                      goal: 0,
+                      meetGoal: 0,
+                      behindGoal: 0,
+                      atRisk: 0,
+                      year: "",
+                      week: "",
+                    },
+                  ]);
+                }}
+              >
+                Upload Excel
+              </Button>
+              <Button
+                variant={isManual ? "green" : "outline"}
+                size="sm"
+                onClick={() => {
+                  setIsManual(true);
                   setFile(null);
                   setPreviewData(null);
                   setError(null);
+                  setDuplicateDates(null);
+                  setPendingUploadData(null);
                 }}
-                className="text-gray-500 hover:text-gray-700"
               >
-                <X className="w-4 h-4" />
-              </button>
+                Manual Entry
+              </Button>
             </div>
-          )}
+            {!isManual && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onDownload?.(selectedKPIData?.metricId!)}
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Download Template
+              </Button>
+            )}
+          </div>
+        </DialogHeader>
 
-          {loading && (
-            <div className="space-y-2">
-              <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-blue-600 transition-all duration-300"
-                  style={{ width: `${progress}%` }}
-                />
-              </div>
-              <p className="text-sm text-center text-gray-600">
-                Processing file...
+        <div className="space-y-4">
+          {/* File Drop Zone */}
+          {!file && !isManual && (
+            <div
+              className="border-2 border-dashed border-green-800 bg-green-50 dark:bg-slate-700 rounded-lg p-8 py-32 text-center cursor-pointer"
+              onDragOver={handleDragOver}
+              onDrop={handleDrop}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <FileSpreadsheet className="w-16 h-16 mx-auto mb-4 text-green-800" />
+              <p className="text-sm mb-2">
+                Drag and drop your Excel file here, or click to browse
               </p>
+              <p className="text-xs text-gray-500">
+                Supports .xlsx and .xls files
+              </p>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".xlsx,.xls"
+                onChange={handleFileSelect}
+                className="hidden"
+              />
             </div>
           )}
 
-          {error && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-md">
-              <p className="text-sm text-red-600">{error}</p>
-            </div>
-          )}
-
-          {previewData && previewData.length > 0 && (
+          {/* File Preview */}
+          {file && !isManual && previewData && (
             <div className="space-y-2">
               <h4 className="font-medium text-sm">
                 Preview Data ({previewData.length} rows)
@@ -216,16 +398,155 @@ export function ExcelImport({
             </div>
           )}
 
-          <div className="flex justify-end gap-2 pt-4">
+          {/* Manual Entry */}
+          {isManual && (
+            <div className="space-y-4">
+              <div className="border rounded-md overflow-y-scroll max-h-[40vh]">
+                <table className="w-full text-sm border-collapse">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="px-3 py-2 border-r text-center">Date</th>
+                      <th className="px-3 py-2 border-r text-center">Value</th>
+                      <th className="px-3 py-2 border-r text-center">Goal</th>
+                      <th className="px-3 py-2 border-r text-center">Meet</th>
+                      <th className="px-3 py-2 border-r text-center">Behind</th>
+                      <th className="px-3 py-2 border-r text-center">
+                        At Risk
+                      </th>
+                      <th className="px-3 py-2 text-left">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {manualRows.map((row, idx) => (
+                      <tr key={idx}>
+                        <td className="border-r p-0">
+                          <input
+                            type="date"
+                            className="w-full p-2 text-center focus:outline-none"
+                            value={row.date}
+                            onChange={(e) =>
+                              updateRow(idx, "date", e.target.value)
+                            }
+                          />
+                        </td>
+                        {[
+                          "value",
+                          "goal",
+                          "meetGoal",
+                          "behindGoal",
+                          "atRisk",
+                        ].map((field) => (
+                          <td key={field} className="border-r p-0">
+                            <input
+                              type="number"
+                              className="w-full p-2 text-center focus:outline-none no-spinner"
+                              value={(row as any)[field]}
+                              onChange={(e) =>
+                                updateRow(
+                                  idx,
+                                  field as any,
+                                  Number(e.target.value)
+                                )
+                              }
+                            />
+                          </td>
+                        ))}
+                        <td className="p-2 text-center">
+                          <button
+                            className="text-red-500 text-xs hover:underline"
+                            onClick={() => removeRow(idx)}
+                          >
+                            Delete
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <Button onClick={addRow} variant="outline" className="w-full">
+                + Add Row
+              </Button>
+            </div>
+          )}
+
+          {/* Duplicate Conflict Resolver */}
+          {duplicateDates && pendingUploadData && (
+            <ExcelCompareWithDB
+              duplicateDates={duplicateDates || []}
+              pendingUploadData={pendingUploadData || []}
+              existingData={existingData || []}
+              onSubmitSelection={async (selectedDuplicates) => {
+                const nonDuplicateNewRows = (pendingUploadData || []).filter(
+                  (d) =>
+                    !(duplicateDates || []).includes(
+                      new Date(d.date).toISOString().slice(0, 10)
+                    )
+                );
+                const finalData = [
+                  ...selectedDuplicates,
+                  ...nonDuplicateNewRows,
+                ];
+
+                await onReplaceDuplicates(
+                  finalData,
+                  finalData.map((d) => d.date)
+                );
+
+                setDuplicateDates(null);
+                setPendingUploadData(null);
+                handleClose();
+              }}
+              onCancel={() => {
+                setDuplicateDates(null);
+                setPendingUploadData(null);
+              }}
+            />
+          )}
+
+          {/* Internal Duplicate Resolver */}
+          <ExcelDuplicateCleaner
+            duplicates={internalDuplicateList!}
+            originalData={previewData!}
+            onResolve={async (cleanedRows) => {
+              setPreviewData(cleanedRows);
+              setInternalDuplicateList(null);
+
+              const result = await onImport(cleanedRows);
+
+              if (result?.status === "duplicates") {
+                setDuplicateDates(result.duplicates ?? null);
+                setPendingUploadData(result.newData ?? null);
+                return;
+              }
+
+              if (result?.status === "ok") {
+                handleClose();
+              }
+            }}
+            onCancel={() => setInternalDuplicateList(null)}
+          />
+        </div>
+
+        {!duplicateDates && !internalDuplicateList && (
+          <div className="flex justify-end gap-2 pt-4 border-t border-gray-200 mt-2">
             <Button variant="outline" onClick={handleClose}>
               Cancel
             </Button>
-            <Button onClick={handleImport} disabled={!previewData || loading}>
-              <Upload className="w-4 h-4 mr-2" />
-              Import Data
-            </Button>
+            {!isManual ? (
+              <Button onClick={handleImport} disabled={!previewData || loading}>
+                <Upload className="w-4 h-4 mr-2" /> Import Data
+              </Button>
+            ) : (
+              <Button
+                onClick={handleManualImport}
+                disabled={manualRows.length === 0}
+              >
+                <Upload className="w-4 h-4 mr-2" /> Import Data
+              </Button>
+            )}
           </div>
-        </div>
+        )}
       </DialogContent>
     </Dialog>
   );

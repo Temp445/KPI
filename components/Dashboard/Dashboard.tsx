@@ -15,12 +15,19 @@ import { months } from '@/utils/clampEndMonthYear';
 import { exportToExcel } from '@/utils/excelProcessor';
 import { useAuth } from '@/context/authContext';
 
+type ImportResult = 
+  | { status: "ok" }
+  | { status: "duplicates"; duplicates: string[]; newData: WeeklyData[] }
+  | { status: "error"; error: any };
+
+
 export function Dashboard() {
   const { user } = useAuth();
   const { kpiData, setKPIData, loading, setLoading, filters } = useDashboardStore();
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [selectedKPI, setSelectedKPI] = useState<string | null>(null);
   const [activeMetricId, setActiveMetricId] = useState<string | null>(null);
+  const [existingRowsForImport, setExistingRowsForImport] = useState<WeeklyData[] | null>(null);
 
   const [allowOverflow, setAllowOverflow] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
@@ -56,17 +63,7 @@ export function Dashboard() {
     setLoading(true);
 
     try {
-      const start = new Date(
-        Number(filters.startYear),
-        Math.max(0, months.indexOf(filters.startMonth)),
-        1
-      );
-      const end = new Date(
-        Number(filters.endYear),
-        Math.max(0, months.indexOf(filters.endMonth)) + 1,
-        0
-      );
-
+      
       const { data: categories, error: categoriesError } = await supabase
         .from('kpi_categories')
         .select('*')
@@ -139,7 +136,7 @@ export function Dashboard() {
                 : category.name === 'Safety'
                 ? 'One Minute Manager'
                 : `One Minute Manager`,
-                allMetrics: metric?.map((m: any) => ({ id: m.id, title: m.title })) || [],
+                allMetrics: metric?.map((m: any) => ({ id: m.id, title: m.title ,metric_type: m.metric_type})) || [],
           },
           chartData,
           actionPlans: plans,
@@ -162,16 +159,45 @@ export function Dashboard() {
     }
   };
 
- const handleUpload = (payload: string) => {
+const handleUpload = async (payload: string) => {
   const [categoryId, metricId, type] = payload.split(":");
 
   setSelectedKPI(categoryId);
   setActiveMetricId(metricId);
 
   if (type === "import") {
-    setImportDialogOpen(true);
+    // fetch existing rows for this metric so ExcelImport can show them
+    try {
+      const { data: existing, error: existingError } = await supabase
+        .from('kpi_weekly_data')
+        .select('*')
+        .eq('metric_id', metricId)
+        .order('date', { ascending: true });
+
+      if (existingError) throw existingError;
+
+      // normalize to WeeklyData shape the component expects
+      const existingNormalized: WeeklyData[] = (existing || []).map((r: any) => ({
+        date: (r.date || '').toString(),
+        value: r.value ?? 0,
+        goal: r.goal ?? undefined,
+        meetGoal: r.meet_goal ?? undefined,
+        behindGoal: r.behind_goal ?? undefined,
+        atRisk: r.at_risk ?? undefined,
+        year: r.year?.toString() ?? '',
+        week: r.week_number?.toString() ?? ''
+      }));
+
+      setExistingRowsForImport(existingNormalized);
+    } catch (err) {
+      console.error('Failed to fetch existing rows for import', err);
+      setExistingRowsForImport(null);
+    } finally {
+      setImportDialogOpen(true);
+    }
   }
 };
+
 
 const filterChartDataByRange = (data: WeeklyData[], startYear: number, startMonth: string, endYear: number, endMonth: string) => {
   const startDate = new Date(startYear, months.indexOf(startMonth), 1);
@@ -216,62 +242,82 @@ const handleDownload = (metricId: string) => {
   exportToExcel(filteredData, `${metricName.replace(/\s+/g, "_")}-data.xlsx`);
 };
 
-  const handleImportData = async (data: WeeklyData[]) => {
+// Helper: insert rows using upsert (requires unique constraint on metric_id,date)
+async function insertDataRows(data: WeeklyData[], metricId: string) {
+  const formattedRows = data.map((row) => {
+    const dateObj = new Date(row.date);
+    const year = dateObj.getFullYear();
+    const month = dateObj.getMonth() + 1;
+    const week = Math.ceil(
+      ((dateObj.getTime() - new Date(year, 0, 1).getTime()) / 86400000 + 1) / 7
+    );
 
-    if (!user) {
+    return {
+      metric_id: metricId,
+      week_number: week,
+      year,
+      month,
+      value: Number(row.value ?? 0),
+      goal: row.goal ?? null,
+      meet_goal: row.meetGoal ?? null,
+      behind_goal: row.behindGoal ?? null,
+      at_risk: row.atRisk ?? null,
+      date: row.date,
+    };
+  });
+
+  const { error } = await supabase.from("kpi_weekly_data").upsert(formattedRows, {
+    onConflict: "metric_id,date",
+  });
+
+  if (error) throw error;
+}
+
+
+const handleImportData = async (data: WeeklyData[]): Promise<ImportResult> => {
+  if (!user) {
     toast({
       title: "Not Logged In",
       description: "You must be logged in to import data.",
       variant: "destructive",
     });
-    return;
+    return { status: "error", error: "not_logged_in" };
   }
 
-  if (!selectedKPI || !activeMetricId) return;
+  if (!selectedKPI || !activeMetricId) return { status: "error", error: "no_metric_selected" };
 
   try {
-    setLoading(true);
-    const metricId = activeMetricId;   
+    // setLoading(true);
+    const metricId = activeMetricId;
 
-    const formattedRows = data.map((row) => {
-      const dateObj = new Date(row.date);
-      const year = dateObj.getFullYear();
-      const month = dateObj.getMonth() + 1;
-      const week = Math.ceil(
-        ((dateObj.getTime() - new Date(year, 0, 1).getTime()) / 86400000 + 1) / 7
-      );
-
-      return {
-        metric_id: metricId,  
-        week_number: week,
-        year,
-        month,
-        value: Number(row.value),
-        goal: row.goal ?? null,
-        meet_goal: row.meetGoal ?? null,
-        behind_goal: row.behindGoal ?? null,
-        at_risk: row.atRisk ?? null,
-        date: row.date,
-      };
+    // Normalize uploaded dates (YYYY-MM-DD)
+    const uploadedDates = data.map((d) => {
+      const dt = new Date(d.date);
+      return dt.toISOString().slice(0, 10);
     });
 
-    // Remove duplicate dates
-    const map = new Map();
-    formattedRows.forEach((row) => {
-      if (!map.has(row.date)) map.set(row.date, row);
-    });
-    const uniqueRows = Array.from(map.values());
+    // Fetch existing dates for this metric
+    const { data: existingDB, error: existingError } = await supabase
+      .from("kpi_weekly_data")
+      .select("date")
+      .eq("metric_id", metricId);
 
-    // Remove existing rows for same metricId + date
-    for (const row of uniqueRows) {
-      await supabase
-        .from("kpi_weekly_data")
-        .delete()
-        .eq("metric_id", metricId)
-        .eq("date", row.date);
+    if (existingError) throw existingError;
+
+    const existingDates = (existingDB || []).map((r: any) =>
+      new Date(r.date).toISOString().slice(0, 10)
+    );
+
+    // Find duplicates (string compare)
+    const duplicates = uploadedDates.filter((date) => existingDates.includes(date));
+
+    if (duplicates.length > 0) {
+      // Return duplicates and uploaded data to caller so UI can ask user
+      return { status: "duplicates", duplicates, newData: data };
     }
 
-    await supabase.from("kpi_weekly_data").insert(uniqueRows);
+    // No duplicates -> insert all
+    await insertDataRows(data, metricId);
 
     toast({
       title: "Import Success",
@@ -279,24 +325,62 @@ const handleDownload = (metricId: string) => {
       variant: "success",
     });
 
+    // reload and cleanup UI
     await loadDashboardData();
     setImportDialogOpen(false);
     setSelectedKPI(null);
     setActiveMetricId(null);
 
+    return { status: "ok" };
   } catch (error) {
+    console.error("Import error:", error);
     toast({
       title: "Import Failed",
-      description: String(error),
+      description: error instanceof Error ? error.message : String(error),
       variant: "destructive",
     });
+    return { status: "error", error };
+  } finally {
+  }
+};
+
+
+// Replace duplicates: delete existing rows for the duplicate dates then insert all uploaded rows
+const handleReplaceDuplicates = async (pendingData: WeeklyData[], duplicates: string[]): Promise<ImportResult> => {
+  if (!user || !activeMetricId) return { status: "error", error: "not_ready" };
+
+  try {
+    setLoading(true);
+    const metricId = activeMetricId;
+
+    // delete existing rows with metricId and duplicate dates
+    await supabase
+      .from("kpi_weekly_data")
+      .delete()
+      .eq("metric_id", metricId)
+      .in(
+        "date",
+        duplicates.map((d) => new Date(d).toISOString().slice(0, 10))
+      );
+
+    // insert all rows (including duplicates from uploaded file)
+    await insertDataRows(pendingData, metricId);
+
+    await loadDashboardData();
+    toast({ title: "Replaced", description: "Existing rows replaced.", variant: "success" });
+
+    return { status: "ok" };
+  } catch (error) {
+    toast({ title: "Replace Failed", description: String(error), variant: "destructive" });
+    return { status: "error", error };
   } finally {
     setLoading(false);
   }
 };
 
 
-  const selectedKPIData = kpiData.find((k) => k.id === selectedKPI);
+
+const selectedKPIData = kpiData.find((k) => k.id === selectedKPI);
 
   const toggleOverflow = () => {
     setAllowOverflow((prev) => {
@@ -360,11 +444,14 @@ const handleDownload = (metricId: string) => {
           onClose={() => {
             setImportDialogOpen(false);
             setSelectedKPI(null);
+            setExistingRowsForImport(null); 
           }}
           onImport={handleImportData}
+          onReplaceDuplicates={handleReplaceDuplicates}
           kpiTitle={selectedKPIData.title}
           selectedKPIData={{ metricId: activeMetricId! }}
           onDownload={handleDownload}
+          existingData={existingRowsForImport}
         />
       )}
     </div>

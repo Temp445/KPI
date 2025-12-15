@@ -30,7 +30,7 @@ export interface KPIData {
   metrics: {
     primary: string;
     secondary?: string;
-    allMetrics?: { id: string; title: string }[];
+    allMetrics?: { id: string; title: string; metric_type?: string;  }[];
   };
   chartData: WeeklyData[];
   actionPlans: ActionPlanItem[];

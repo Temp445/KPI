@@ -2,7 +2,7 @@
 
 import { Card } from "@/components/ui/card";
 import { KPIData } from "@/types/dashboard";
-import { ExternalLink, Upload } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 import { KPIChart } from "./KPIChart";
 import { ActionPlanSection } from "../ActionPlan/ActionPlanSection";
 import { useDashboardStore } from "@/stores/dashboardStore";
@@ -184,7 +184,7 @@ export function KPICard({ data, onUpload }: KPICardProps) {
 
   return (
     <Card className="shadow-lg hover:shadow-xl transition-shadow">
-      <div className="p-2 rounded-t-lg relative group" style={{ backgroundColor: data.color }}>
+      <div className="p-2 rounded-lg relative group" style={{ backgroundColor: data.color }}>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-white text-xl font-semibold">{data.category}</h2>
 
@@ -235,6 +235,7 @@ export function KPICard({ data, onUpload }: KPICardProps) {
         </div>
       </div>
 
+
       <div className="p-4 bg-white">
         <div className="flex items-center justify-between mb-4">
           <select
@@ -260,6 +261,7 @@ export function KPICard({ data, onUpload }: KPICardProps) {
           <KPIChart
           data={selectedChartData}
           title={data.metrics.allMetrics?.find(m => m.id === selectedMetric)?.title || data.metrics.primary}
+           metricType={data.metrics.allMetrics?.find(m => m.id === selectedMetric)?.metric_type || "count"}
           color={data.color}
         />
       )}
