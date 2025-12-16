@@ -344,8 +344,6 @@ const handleImportData = async (
   }
 };
 
-
-
 // Handle replacing duplicates in DB with uploaded data
 const handleReplaceDuplicates = async (pendingData: WeeklyData[], duplicates: string[]): Promise<ImportResult> => {
   if (!user || !activeMetricId) return { status: "error", error: "not_ready" };
@@ -392,21 +390,9 @@ const toggleOverflow = () => {
   return (
     <div className="bg-gray-50 dark:bg-gray-900 transition-colors">
       <div className="max-w-[1600px] mx-auto p-4">
-        <div className="flex items-center justify-between mb-6 gap-4 flex-wrap">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">TL Dashboard</h1>
-          <div className="flex justify-between items-end md:items-start gap-4 ">
-            <DashboardFilters />
-            <div className="flex items-center gap-3 -ml-24 md:-ml-0">
-              <ThemeToggle />
-              <ToggleSetting
-                onToggleOverflow={toggleOverflow}
-                allowOverflow={allowOverflow}
-                maxLength={maxLength}
-                setMaxLength={setMaxLength}
-                kpiDataLength={kpiData.length}
-              />
-            </div>
-          </div>
+        <div className="flex items-center md:justify-between mb-6 gap-4 flex-wrap">
+            <DashboardFilters toggleOverflow={toggleOverflow} allowOverflow={allowOverflow} maxLength={maxLength} setMaxLength={setMaxLength} kpiData={kpiData} />
+
         </div>
 
         {loading ? (

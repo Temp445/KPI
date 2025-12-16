@@ -52,9 +52,7 @@ export function ExcelImport({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [duplicateDates, setDuplicateDates] = useState<string[] | null>(null);
-  const [pendingUploadData, setPendingUploadData] = useState<
-    WeeklyData[] | null
-  >(null);
+  const [pendingUploadData, setPendingUploadData] = useState<WeeklyData[] | null>(null);
 
   const [isManual, setIsManual] = useState(false);
 
@@ -65,13 +63,9 @@ export function ExcelImport({
       week: "",
     }));
 
-  const [manualRows, setManualRows] = useState<WeeklyData[]>(
-    createEmptyRows(10)
-  );
+  const [manualRows, setManualRows] = useState<WeeklyData[]>(createEmptyRows(10));
 
-  const [internalDuplicateList, setInternalDuplicateList] = useState<
-    { date: string; rows: WeeklyData[] }[] | null
-  >(null);
+  const [internalDuplicateList, setInternalDuplicateList] = useState<{ date: string; rows: WeeklyData[] }[] | null>(null);
 
   const processFile = async (selectedFile: File) => {
     setFile(selectedFile);
@@ -245,7 +239,7 @@ export function ExcelImport({
         if (!loading && !open) handleClose();
       }}
     >
-      <DialogContent className="max-w-6xl h-[85vh] overflow-y-auto">
+      <DialogContent className="max-w-6xl h-fit overflow-x-auto overflow-y-auto">
         {loading && (
           <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-white/70 backdrop-blur-sm">
             <div className="flex flex-col items-center gap-3">

@@ -13,6 +13,15 @@ import { useEffect } from "react";
 import CustomMonthPicker from "./CustomMonthPicker";
 import { clampEndMonthYear, months } from "@/utils/clampEndMonthYear";
 import { useToast } from "@/hooks/use-toast";
+import ToggleSetting from "../FiltersButton/ToggleSetting";
+
+interface DashboardFiltersProps {
+  toggleOverflow: () => void;
+  allowOverflow: boolean;
+  maxLength: number;
+  kpiData: any[];
+  setMaxLength: React.Dispatch<React.SetStateAction<number>>;
+}
 
 
 const departments = [
@@ -23,7 +32,13 @@ const departments = [
   "Human Resources",
 ];
 
-export function DashboardFilters() {
+export function DashboardFilters({
+  toggleOverflow,
+  allowOverflow,
+  maxLength,
+  kpiData,
+  setMaxLength,
+}: DashboardFiltersProps) {  
   const { toast } = useToast();
 
   const { filters, setFilters } = useDashboardStore();
@@ -56,8 +71,9 @@ export function DashboardFilters() {
     filters.startMonth === filters.endMonth;
 
   return (
-    <div className="flex items-center gap-3 flex-wrap">
-      <Select
+    <div className="w-full flex items-center justify-between gap-3 flex-wrap">
+   <div className="flex flex-col md:flex-row gap-3">
+       <Select
         value={filters.department}
         onValueChange={(value) => setFilters({ department: value })}
       >
@@ -147,8 +163,10 @@ export function DashboardFilters() {
         }}
       />
       </div>
+   </div>
 
-      <div className="flex items-center bg-white dark:bg-gray-900 border border-gray-300 rounded-md overflow-hidden">
+   <div className="flex gap-4">
+       <div className="flex items-center bg-white dark:bg-gray-900 border border-gray-300 rounded-md overflow-hidden">
         <Button
         type="button"
           variant="ghost"
@@ -201,6 +219,15 @@ export function DashboardFilters() {
           Monthly
         </Button>
       </div>
+        
+        <ToggleSetting
+        onToggleOverflow={toggleOverflow}
+        allowOverflow={allowOverflow}
+        maxLength={maxLength}
+        setMaxLength={setMaxLength}
+        kpiDataLength={kpiData.length}
+      />
+   </div>
     </div>
   );
 }

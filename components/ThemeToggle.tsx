@@ -18,16 +18,15 @@ export function ThemeToggle() {
   }
 
   return (
-    <Button
-      variant="outline"
-      size="icon"
+    <button
       onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+      className='h-fit p-1.5 border rounded-full'
     >
       {theme === 'dark' ? (
         <Sun className="h-5 w-5" />
       ) : (
         <Moon className="h-5 w-5" />
       )}
-    </Button>
+    </button>
   );
 }

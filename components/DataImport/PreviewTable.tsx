@@ -66,7 +66,7 @@ export default function PreviewTable({
       </div>
 
       {/* Table */}
-      <div className="border rounded-md overflow-hidden  overflow-y-auto">
+      <div className="border rounded-md overflow-hidden h-52 2xl:h-80 overflow-y-auto">
         <table className="w-full text-sm">
           <thead className="bg-gray-50 sticky top-0">
             <tr>
