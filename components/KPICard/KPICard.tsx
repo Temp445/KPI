@@ -29,9 +29,16 @@ export function KPICard({ data, onUpload }: KPICardProps) {
   const { filters } = useDashboardStore();
   const [activeSegment, setActiveSegment] = useState<number | null>(null);
   const [rotateEnabled, setRotateEnabled] = useState(true);
-  const [selectedMetric, setSelectedMetric] = useState<string>(data.metricId ?? "");
+  // const [selectedMetric, setSelectedMetric] = useState<string>(data.metricId ?? "");
   const [selectedChartData, setSelectedChartData] = useState(data.chartData);
 
+const [selectedMetric, setSelectedMetric] = useState<string>(() => {
+  return (
+    localStorage.getItem("selectedMetric") ||
+    data.metricId ||
+    ""
+  );
+});
 
   useEffect(() => {
     fetchMetricChartData(selectedMetric);
@@ -153,7 +160,7 @@ export function KPICard({ data, onUpload }: KPICardProps) {
   const mappedChartData = mapChartDataToSegments();
 
   const colors: SegmentColor[] = mappedChartData.map(weekData => {
-    if (!weekData.value) return "white"; // No data
+    if (!weekData.value) return "white"; 
     const isGoal = weekData.goal && weekData.value >= weekData.goal;
     const isBehind = weekData.behindGoal && weekData.value < (weekData.goal || 0);
     const isAtRisk = weekData.atRisk && weekData.value < (weekData.goal || 0) * 0.9;
@@ -239,12 +246,12 @@ export function KPICard({ data, onUpload }: KPICardProps) {
       <div className="p-4 bg-white">
         <div className="flex items-center justify-between mb-4">
           <select
-            className="text-sm border border-gray-300 rounded-md px-3 py-1.5"
+            className="text-sm w-full border border-gray-300 rounded-md px-3 py-1.5"
             value={selectedMetric}
             onChange={(e) => {
-              e.preventDefault();
-              setSelectedMetric(e.target.value);
-              fetchMetricChartData(e.target.value);
+            const value = e.target.value;
+             setSelectedMetric(value);
+             localStorage.setItem("selectedMetric", value);
             }}
           >
             {data.metrics.allMetrics?.map(m => (
@@ -261,7 +268,7 @@ export function KPICard({ data, onUpload }: KPICardProps) {
           <KPIChart
           data={selectedChartData}
           title={data.metrics.allMetrics?.find(m => m.id === selectedMetric)?.title || data.metrics.primary}
-           metricType={data.metrics.allMetrics?.find(m => m.id === selectedMetric)?.metric_type || "count"}
+          metricType={data.metrics.allMetrics?.find(m => m.id === selectedMetric)?.metric_type || "count"}
           color={data.color}
         />
       )}
@@ -275,9 +282,6 @@ export function KPICard({ data, onUpload }: KPICardProps) {
           <div className="mt-4 pt-4 border-t">
             <div className="flex items-center justify-between mb-2">
               <h4 className="text-sm font-medium">{data.metrics.secondary}</h4>
-              {/* <button className="text-gray-400 hover:text-gray-600">
-                <Upload className="w-4 h-4" />
-              </button> */}
             </div>
             {hasNoData ? (
           <div className="text-center text-gray-500 py-10 text-sm">
@@ -287,6 +291,7 @@ export function KPICard({ data, onUpload }: KPICardProps) {
             <KPIChart
               data={selectedChartData}
               title={data.metrics.secondary}
+              metricType={data.metrics.allMetrics?.find(m => m.id === selectedMetric)?.metric_type || "count"}
               color={data.color}
               type="line"
             />

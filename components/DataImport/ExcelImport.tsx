@@ -13,6 +13,8 @@ import { processExcelFile } from "@/utils/excelProcessor";
 import { WeeklyData } from "@/types/dashboard";
 import { ExcelCompareWithDB } from "./ExcelCompareWithDB";
 import { ExcelDuplicateCleaner } from "./ExcelDuplicateCleaner";
+import { ManualEntryTable } from "./ManualEntryTable";
+import PreviewTable from "./PreviewTable";
 
 interface ExcelImportProps {
   isOpen: boolean;
@@ -56,67 +58,26 @@ export function ExcelImport({
   >(null);
 
   const [isManual, setIsManual] = useState(false);
-  const [manualRows, setManualRows] = useState<WeeklyData[]>([
-    {
-      date: "",
-      value: 0,
-      goal: 0,
-      meetGoal: 0,
-      behindGoal: 0,
-      atRisk: 0,
-      year: "",
-      week: "",
-    },
-  ]);
 
-  const [internalDuplicateList, setInternalDuplicateList] = useState<
-    { date: string; rows: WeeklyData[] }[] | null
-  >(null);
 
-  // --- Utility functions ---
-  const updateRow = (index: number, field: keyof WeeklyData, value: any) => {
-    const newRows = [...manualRows];
-    newRows[index] = { ...newRows[index], [field]: value };
-    setManualRows(newRows);
-  };
 
-  const removeRow = (index: number) => {
-    const newRows = manualRows.filter((_, i) => i !== index);
-    setManualRows(
-      newRows.length
-        ? newRows
-        : [
-            {
-              date: "",
-              value: 0,
-              goal: 0,
-              meetGoal: 0,
-              behindGoal: 0,
-              atRisk: 0,
-              year: "",
-              week: "",
-            },
-          ]
-    );
-  };
+const createEmptyRows = (count: number): WeeklyData[] =>
+  Array.from({ length: count }, () => ({
+    date: "",
+    value: 0,
+    goal: 0,
+    meetGoal: 0,
+    behindGoal: 0,
+    atRisk: 0,
+    year: "",
+    week: "",
+  }));
 
-  const addRow = () => {
-    setManualRows([
-      ...manualRows,
-      {
-        date: "",
-        value: 0,
-        goal: 0,
-        meetGoal: 0,
-        behindGoal: 0,
-        atRisk: 0,
-        year: "",
-        week: "",
-      },
-    ]);
-  };
 
-  // --- File processing ---
+  const [manualRows, setManualRows] = useState<WeeklyData[]>( createEmptyRows(10));
+
+  const [internalDuplicateList, setInternalDuplicateList] = useState< { date: string; rows: WeeklyData[] }[] | null>(null);
+
   const processFile = async (selectedFile: File) => {
     setFile(selectedFile);
     setError(null);
@@ -135,12 +96,14 @@ export function ExcelImport({
 
     setLoading(false);
   };
-
+ 
+  
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (selectedFile) processFile(selectedFile);
   };
-
+ 
+  // Drop Handler
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -151,11 +114,13 @@ export function ExcelImport({
     }
   };
 
+ // Drag Over Handler  
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
   };
-
+ 
+  //  Close Handler
   const handleClose = () => {
     setFile(null);
     setPreviewData(null);
@@ -178,18 +143,23 @@ export function ExcelImport({
     onClose();
   };
 
-  // --- Import functions ---
+  const handlePreviewCancel = () => {
+  setFile(null);
+  setPreviewData(null);
+  setError(null);
+  setProgress(0);
+};
+
+  // Excel Import Handler
   const handleImport = async () => {
     if (!previewData) return;
-    // 1️⃣ Check duplicates inside Excel
+    //Check duplicates inside Excel
     const internalDupes = findInternalDuplicates(previewData);
 
     if (internalDupes.length > 0) {
-      setInternalDuplicateList(internalDupes); // NEW STATE
+      setInternalDuplicateList(internalDupes); 
       return;
     }
-
-    // 2️⃣ No internal duplicates → continue with backend import
     const result = await onImport(previewData);
 
     if (!result) return;
@@ -205,6 +175,7 @@ export function ExcelImport({
     }
   };
 
+  // Manual Import Handler
   const handleManualImport = async () => {
     const cleaned = manualRows.filter((r) => r.date.trim() !== "");
     if (cleaned.length === 0) {
@@ -226,6 +197,7 @@ export function ExcelImport({
     }
   };
 
+  // Helper to normalize date strings
   function normalizeDate(date: any): string {
     if (!date) return "";
 
@@ -242,7 +214,8 @@ export function ExcelImport({
 
     return "";
   }
-
+ 
+  // Find internal duplicates in uploaded data
   function findInternalDuplicates(data: WeeklyData[]) {
     const map: Record<string, WeeklyData[]> = {};
 
@@ -253,7 +226,7 @@ export function ExcelImport({
       map[dateKey] ??= [];
       map[dateKey].push({
         ...row,
-        date: dateKey, // enforce normalized date
+        date: dateKey, 
       });
     }
 
@@ -268,7 +241,6 @@ export function ExcelImport({
         <DialogHeader>
           <DialogTitle>Import Data for {kpiTitle}</DialogTitle>
 
-          {/* Toggle Upload / Manual */}
           <div className="flex items-center justify-between pt-5">
             <div className="flex gap-2">
               <Button
@@ -306,6 +278,7 @@ export function ExcelImport({
                   setError(null);
                   setDuplicateDates(null);
                   setPendingUploadData(null);
+                  setManualRows(createEmptyRows(10))
                 }}
               >
                 Manual Entry
@@ -324,8 +297,11 @@ export function ExcelImport({
           </div>
         </DialogHeader>
 
+
+
         <div className="space-y-4">
-          {/* File Drop Zone */}
+
+          {/* File Upload Section */}
           {!file && !isManual && (
             <div
               className="border-2 border-dashed border-green-800 bg-green-50 dark:bg-slate-700 rounded-lg p-8 py-32 text-center cursor-pointer"
@@ -350,127 +326,53 @@ export function ExcelImport({
             </div>
           )}
 
-          {/* File Preview */}
+          {/* Preview Table */}
           {file && !isManual && previewData && (
-            <div className="space-y-2">
-              <h4 className="font-medium text-sm">
-                Preview Data ({previewData.length} rows)
-              </h4>
-              <div className="border rounded-md overflow-hidden max-h-64 overflow-y-auto">
-                <table className="w-full text-sm">
-                  <thead className="bg-gray-50 sticky top-0">
-                    <tr>
-                      <th className="px-3 py-2 text-left">Date</th>
-                      <th className="px-3 py-2 text-right">Value</th>
-                      <th className="px-3 py-2 text-right">Goal</th>
-                      <th className="px-3 py-2 text-right">Meet Goal</th>
-                      <th className="px-3 py-2 text-right">Behind Goal</th>
-                      <th className="px-3 py-2 text-right">At Risk</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {previewData.slice(0, 10).map((row, idx) => (
-                      <tr key={idx} className="border-t">
-                        <td className="px-3 py-2">{row.date || "-"}</td>
-                        <td className="px-3 py-2 text-right">{row.value}</td>
-                        <td className="px-3 py-2 text-right">
-                          {row.goal ?? "-"}
-                        </td>
-                        <td className="px-3 py-2 text-right">
-                          {row.meetGoal ?? "-"}
-                        </td>
-                        <td className="px-3 py-2 text-right">
-                          {row.behindGoal ?? "-"}
-                        </td>
-                        <td className="px-3 py-2 text-right">
-                          {row.atRisk ?? "-"}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              {previewData.length > 10 && (
-                <p className="text-xs text-gray-500 text-center">
-                  Showing first 10 of {previewData.length} rows
-                </p>
-              )}
-            </div>
+          <PreviewTable
+            file={file}
+            isManual={isManual}
+            previewData={previewData}
+            handlePreviewCancel={handlePreviewCancel}
+          />
           )}
+
+          {/* Handle Internal Duplicates in Excel  */}
+       {internalDuplicateList && previewData && (
+          <ExcelDuplicateCleaner
+            duplicates={internalDuplicateList!}
+            originalData={previewData!}
+            onResolve={async (cleanedRows) => {
+              setInternalDuplicateList(null);
+              setPreviewData(cleanedRows);
+
+              const result = await onImport(cleanedRows);
+
+              if (result?.status === "duplicates") {
+                setDuplicateDates(result.duplicates ?? null);
+                setPendingUploadData(result.newData ?? null);
+                return;
+              }
+
+              if (result?.status === "ok") {
+                handleClose();
+              }
+            }}
+            onCancel={() => setInternalDuplicateList(null)}
+          />
+        )}
+
+
 
           {/* Manual Entry */}
-          {isManual && (
-            <div className="space-y-4">
-              <div className="border rounded-md overflow-y-scroll max-h-[40vh]">
-                <table className="w-full text-sm border-collapse">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="px-3 py-2 border-r text-center">Date</th>
-                      <th className="px-3 py-2 border-r text-center">Value</th>
-                      <th className="px-3 py-2 border-r text-center">Goal</th>
-                      <th className="px-3 py-2 border-r text-center">Meet</th>
-                      <th className="px-3 py-2 border-r text-center">Behind</th>
-                      <th className="px-3 py-2 border-r text-center">
-                        At Risk
-                      </th>
-                      <th className="px-3 py-2 text-left">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y">
-                    {manualRows.map((row, idx) => (
-                      <tr key={idx}>
-                        <td className="border-r p-0">
-                          <input
-                            type="date"
-                            className="w-full p-2 text-center focus:outline-none"
-                            value={row.date}
-                            onChange={(e) =>
-                              updateRow(idx, "date", e.target.value)
-                            }
-                          />
-                        </td>
-                        {[
-                          "value",
-                          "goal",
-                          "meetGoal",
-                          "behindGoal",
-                          "atRisk",
-                        ].map((field) => (
-                          <td key={field} className="border-r p-0">
-                            <input
-                              type="number"
-                              className="w-full p-2 text-center focus:outline-none no-spinner"
-                              value={(row as any)[field]}
-                              onChange={(e) =>
-                                updateRow(
-                                  idx,
-                                  field as any,
-                                  Number(e.target.value)
-                                )
-                              }
-                            />
-                          </td>
-                        ))}
-                        <td className="p-2 text-center">
-                          <button
-                            className="text-red-500 text-xs hover:underline"
-                            onClick={() => removeRow(idx)}
-                          >
-                            Delete
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              <Button onClick={addRow} variant="outline" className="w-full">
-                + Add Row
-              </Button>
-            </div>
-          )}
+            {isManual && (
+              <ManualEntryTable
+                rows={manualRows}
+                setRows={setManualRows}
+              />
+            )}
 
-          {/* Duplicate Conflict Resolver */}
+
+          {/* Handle Duplicates with DB */}
           {duplicateDates && pendingUploadData && (
             <ExcelCompareWithDB
               duplicateDates={duplicateDates || []}
@@ -503,32 +405,11 @@ export function ExcelImport({
               }}
             />
           )}
-
-          {/* Internal Duplicate Resolver */}
-          <ExcelDuplicateCleaner
-            duplicates={internalDuplicateList!}
-            originalData={previewData!}
-            onResolve={async (cleanedRows) => {
-              setPreviewData(cleanedRows);
-              setInternalDuplicateList(null);
-
-              const result = await onImport(cleanedRows);
-
-              if (result?.status === "duplicates") {
-                setDuplicateDates(result.duplicates ?? null);
-                setPendingUploadData(result.newData ?? null);
-                return;
-              }
-
-              if (result?.status === "ok") {
-                handleClose();
-              }
-            }}
-            onCancel={() => setInternalDuplicateList(null)}
-          />
+       
         </div>
 
-        {!duplicateDates && !internalDuplicateList && (
+        
+        {!duplicateDates && (
           <div className="flex justify-end gap-2 pt-4 border-t border-gray-200 mt-2">
             <Button variant="outline" onClick={handleClose}>
               Cancel

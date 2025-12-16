@@ -59,22 +59,17 @@ export function Dashboard() {
     loadDashboardData();
   }, []);
 
+  // Load dashboard KPI data
   const loadDashboardData = async () => {
     setLoading(true);
-
     try {
-      
       const { data: categories, error: categoriesError } = await supabase
         .from('kpi_categories')
         .select('*')
         .order('display_order');
 
       if (categoriesError) throw categoriesError;
-
       const cats = categories ?? [];
-
-      
-
       const kpiDataPromises = cats.map(async (category) => {
         const { data: metric } = await supabase
           .from('kpi_metrics')
@@ -159,14 +154,14 @@ export function Dashboard() {
     }
   };
 
-const handleUpload = async (payload: string) => {
+  // Handle KPI card upload button click
+  const handleUpload = async (payload: string) => {
   const [categoryId, metricId, type] = payload.split(":");
 
   setSelectedKPI(categoryId);
   setActiveMetricId(metricId);
 
   if (type === "import") {
-    // fetch existing rows for this metric so ExcelImport can show them
     try {
       const { data: existing, error: existingError } = await supabase
         .from('kpi_weekly_data')
@@ -198,7 +193,7 @@ const handleUpload = async (payload: string) => {
   }
 };
 
-
+// Filter chart data by selected date range
 const filterChartDataByRange = (data: WeeklyData[], startYear: number, startMonth: string, endYear: number, endMonth: string) => {
   const startDate = new Date(startYear, months.indexOf(startMonth), 1);
   const endDate = new Date(endYear, months.indexOf(endMonth) + 1, 0); 
@@ -208,6 +203,8 @@ const filterChartDataByRange = (data: WeeklyData[], startYear: number, startMont
   });
 };
 
+
+// Download filtered data to Excel
 const handleDownload = (metricId: string) => {
   if (!user) {
     toast({
@@ -242,7 +239,7 @@ const handleDownload = (metricId: string) => {
   exportToExcel(filteredData, `${metricName.replace(/\s+/g, "_")}-data.xlsx`);
 };
 
-// Helper: insert rows using upsert (requires unique constraint on metric_id,date)
+// Insert data rows into DB
 async function insertDataRows(data: WeeklyData[], metricId: string) {
   const formattedRows = data.map((row) => {
     const dateObj = new Date(row.date);
@@ -266,14 +263,12 @@ async function insertDataRows(data: WeeklyData[], metricId: string) {
     };
   });
 
-  const { error } = await supabase.from("kpi_weekly_data").upsert(formattedRows, {
-    onConflict: "metric_id,date",
-  });
+  const { error } = await supabase.from("kpi_weekly_data").upsert(formattedRows, {onConflict: "metric_id,date"});
 
   if (error) throw error;
 }
 
-
+// Import new data, checking for duplicates first
 const handleImportData = async (data: WeeklyData[]): Promise<ImportResult> => {
   if (!user) {
     toast({
@@ -287,7 +282,6 @@ const handleImportData = async (data: WeeklyData[]): Promise<ImportResult> => {
   if (!selectedKPI || !activeMetricId) return { status: "error", error: "no_metric_selected" };
 
   try {
-    // setLoading(true);
     const metricId = activeMetricId;
 
     // Normalize uploaded dates (YYYY-MM-DD)
@@ -296,7 +290,6 @@ const handleImportData = async (data: WeeklyData[]): Promise<ImportResult> => {
       return dt.toISOString().slice(0, 10);
     });
 
-    // Fetch existing dates for this metric
     const { data: existingDB, error: existingError } = await supabase
       .from("kpi_weekly_data")
       .select("date")
@@ -312,7 +305,6 @@ const handleImportData = async (data: WeeklyData[]): Promise<ImportResult> => {
     const duplicates = uploadedDates.filter((date) => existingDates.includes(date));
 
     if (duplicates.length > 0) {
-      // Return duplicates and uploaded data to caller so UI can ask user
       return { status: "duplicates", duplicates, newData: data };
     }
 
@@ -325,7 +317,6 @@ const handleImportData = async (data: WeeklyData[]): Promise<ImportResult> => {
       variant: "success",
     });
 
-    // reload and cleanup UI
     await loadDashboardData();
     setImportDialogOpen(false);
     setSelectedKPI(null);
@@ -345,7 +336,7 @@ const handleImportData = async (data: WeeklyData[]): Promise<ImportResult> => {
 };
 
 
-// Replace duplicates: delete existing rows for the duplicate dates then insert all uploaded rows
+// Handle replacing duplicates in DB with uploaded data
 const handleReplaceDuplicates = async (pendingData: WeeklyData[], duplicates: string[]): Promise<ImportResult> => {
   if (!user || !activeMetricId) return { status: "error", error: "not_ready" };
 
@@ -353,7 +344,6 @@ const handleReplaceDuplicates = async (pendingData: WeeklyData[], duplicates: st
     setLoading(true);
     const metricId = activeMetricId;
 
-    // delete existing rows with metricId and duplicate dates
     await supabase
       .from("kpi_weekly_data")
       .delete()
@@ -363,12 +353,10 @@ const handleReplaceDuplicates = async (pendingData: WeeklyData[], duplicates: st
         duplicates.map((d) => new Date(d).toISOString().slice(0, 10))
       );
 
-    // insert all rows (including duplicates from uploaded file)
     await insertDataRows(pendingData, metricId);
 
     await loadDashboardData();
     toast({ title: "Replaced", description: "Existing rows replaced.", variant: "success" });
-
     return { status: "ok" };
   } catch (error) {
     toast({ title: "Replace Failed", description: String(error), variant: "destructive" });
@@ -378,11 +366,11 @@ const handleReplaceDuplicates = async (pendingData: WeeklyData[], duplicates: st
   }
 };
 
-
-
+// Get selected KPI data
 const selectedKPIData = kpiData.find((k) => k.id === selectedKPI);
 
-  const toggleOverflow = () => {
+// overflow toggle handler
+const toggleOverflow = () => {
     setAllowOverflow((prev) => {
       const newValue = !prev;
       localStorage.setItem('allowOverflow', JSON.stringify(newValue));
@@ -437,7 +425,7 @@ const selectedKPIData = kpiData.find((k) => k.id === selectedKPI);
           </div>
         )}
       </div>
-
+ 
       {selectedKPIData && (
         <ExcelImport
           isOpen={importDialogOpen}

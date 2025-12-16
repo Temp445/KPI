@@ -1,3 +1,6 @@
+//  It hepls to compare duplicate dates between newly uploaded Excel data and existing database data,
+//  allowing users to choose which data to keep during import.
+
 "use client";
 
 import { WeeklyData } from "@/types/dashboard";

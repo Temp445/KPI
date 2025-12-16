@@ -1,3 +1,6 @@
+// It helps to find and resolve duplicate rows within newly uploaded Excel data
+// before importing, ensuring only one entry per date is kept.
+
 "use client";
 
 import { useState } from "react";
@@ -18,7 +21,6 @@ export function ExcelDuplicateCleaner({
   onCancel,
 }: Props) {
 
-  // 🔐 RUNTIME SAFETY GUARD
   if (!duplicates || duplicates.length === 0) {
     return null;
   }

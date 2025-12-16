@@ -15,7 +15,7 @@ export const Navbar = () => {
   }, [user]);
 
   return (
-    <nav className="w-full p-4 flex justify-between items-center">
+    <nav className="container mx-auto w-full p-4 flex justify-between items-center">
       <Link href="/" className="font-semibold text-xl">
         Dashboard
       </Link>

@@ -26,11 +26,25 @@ interface KPIChartProps {
 
 export function KPIChart({ data, title, metricType, color, type = 'bar' }: KPIChartProps) {
   return (
-    <div style={{ width: '100%', height: 250, paddingTop: '10px', paddingBottom: '10px', boxSizing: 'border-box', fontSize: '10px', textAlign: 'left', marginLeft: '0' }}>
+    <div style={{ width: '100%', height: 300, boxSizing: 'border-box', fontSize: '10px', textAlign: 'left', marginLeft: '0' }}>
       <ResponsiveContainer  width="100%" height="100%">
         {type === 'bar' ? (
-          <BarChart data={data}  margin={{ top: 5, right: 5, left: -15, bottom: 5 }}>
+          
+          <BarChart data={data}  margin={{ top: 30, right: 5, left: -20, bottom: 5 }}>
+              <text
+                   y={10}
+                   textAnchor="start"
+                   dominantBaseline="middle"
+                   style={{
+                     fontSize: 14,
+                     fontWeight: 600,
+                     fill: "#374151",
+                   }}
+                 >
+                   {title}
+                 </text>
             <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+
             <XAxis
               dataKey="week"
               tick={{ fontSize: 10 }}
@@ -40,11 +54,12 @@ export function KPIChart({ data, title, metricType, color, type = 'bar' }: KPICh
             />
             <YAxis  tick={{ fontSize: 10 }} stroke="#999" 
             label={{
-              value: metricType,    
+              value: metricType || "Count",    
               angle: -90,        
               position: "outsideLeft",
-              style: { textAnchor: "middle", fontSize: 12, fill: "#555",paddingRight: '10px' },
-  }}
+              dx: -5,
+              style: { textAnchor: "middle", fontSize: 12, fill: "#555", paddingRight: '20px' },
+              }}
             />
             <Tooltip />
             <Legend
@@ -66,7 +81,7 @@ export function KPIChart({ data, title, metricType, color, type = 'bar' }: KPICh
             <Bar dataKey="value" fill={color} name="Value" />
           </BarChart>
         ) : type === 'line' ? (
-          <LineChart data={data} margin={{ top: 5, right: 5, left: -15, bottom: 5 }}>
+          <LineChart data={data} margin={{ top: 5, right: 5, left: -22, bottom: 5 }} >
             <CartesianGrid strokeDasharray="3 3" stroke="#ddd" />
             <XAxis
               dataKey="week"
@@ -74,14 +89,17 @@ export function KPIChart({ data, title, metricType, color, type = 'bar' }: KPICh
               stroke="#999"
               padding={{ left: 0, right: 0 }}
             />
-            <YAxis tick={{ fontSize: 10 }} stroke="#999" 
-              label={{
-              value: metricType,    
-              angle: -90,        
-              position: "outsideLeft",
-              dx: -10,
-              style: { textAnchor: "middle", fontSize: 12, fill: "#555", paddingRight: '10px' },
-  }}/>
+             <YAxis
+               tick={{ fontSize: 10 }}
+               stroke="#999"
+               label={{
+                 value: metricType || "Count",
+                 angle: -90,
+                 position: "insideLeft",
+                 dx: 20,
+                 style: { textAnchor: "middle", fontSize: 12, fill: "#555" },
+               }}
+             />
             <Tooltip />
             <Legend
               iconSize={10}
