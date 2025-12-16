@@ -12,11 +12,6 @@ interface ManualEntryTableProps {
 
 const emptyRow: WeeklyData = {
   date: "",
-  value: 0,
-  goal: 0,
-  meetGoal: 0,
-  behindGoal: 0,
-  atRisk: 0,
   year: "",
   week: "",
 };

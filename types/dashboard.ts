@@ -5,7 +5,7 @@ export type ActionPlanStatus = 'open' | 'pending' | 'overdue';
 export interface WeeklyData {
   year: string | number; 
   week: string;
-  value: number;
+  value?: number;
   goal?: number;
   meetGoal?: number;
   behindGoal?: number;

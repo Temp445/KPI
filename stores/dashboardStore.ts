@@ -17,7 +17,7 @@ const initialFilters: FilterState = {
   endMonth: new Date().toLocaleString('default', { month: 'long' }),
   startYear: new Date().getFullYear(),
   endYear: new Date().getFullYear(),
-  timePeriod: 'weekly',
+  timePeriod: 'weekly' as TimePeriod,
 };
 
 export const useDashboardStore = create<DashboardStore>((set) => ({

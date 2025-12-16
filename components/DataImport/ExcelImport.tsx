@@ -61,11 +61,6 @@ export function ExcelImport({
   const createEmptyRows = (count: number): WeeklyData[] =>
     Array.from({ length: count }, () => ({
       date: "",
-      value: 0,
-      goal: 0,
-      meetGoal: 0,
-      behindGoal: 0,
-      atRisk: 0,
       year: "",
       week: "",
     }));
@@ -124,11 +119,6 @@ export function ExcelImport({
     setManualRows([
       {
         date: "",
-        value: 0,
-        goal: 0,
-        meetGoal: 0,
-        behindGoal: 0,
-        atRisk: 0,
         year: "",
         week: "",
       },
@@ -289,11 +279,6 @@ export function ExcelImport({
                   setManualRows([
                     {
                       date: "",
-                      value: 0,
-                      goal: 0,
-                      meetGoal: 0,
-                      behindGoal: 0,
-                      atRisk: 0,
                       year: "",
                       week: "",
                     },
