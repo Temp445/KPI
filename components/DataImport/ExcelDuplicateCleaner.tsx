@@ -108,10 +108,10 @@ export function ExcelDuplicateCleaner({
       })}
 
       <div className="flex justify-end gap-3">
-        <Button variant="outline" onClick={onCancel}>
+        <Button variant="outline" type="button" onClick={onCancel}>
           Cancel
         </Button>
-        <Button onClick={handleSubmit}>
+        <Button type="button" onClick={handleSubmit}>
           Continue & Import
         </Button>
       </div>

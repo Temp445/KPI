@@ -105,6 +105,7 @@ export function ManualEntryTable({ rows, setRows }: ManualEntryTableProps) {
 
                 <td className="p-2 text-center">
                   <button
+                    type="button"
                     className="text-red-500 text-xs hover:underline"
                     onClick={() => removeRow(idx)}
                   >
@@ -117,7 +118,7 @@ export function ManualEntryTable({ rows, setRows }: ManualEntryTableProps) {
         </table>
       </div>
 
-      <Button onClick={addRow} variant="outline" className="w-full">
+      <Button type="button" onClick={addRow} variant="outline" className="w-full">
         + Add Row
       </Button>
     </div>

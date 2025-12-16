@@ -156,15 +156,13 @@ export function ExcelCompareWithDB({
           </div>
         </div>
       </div>
-
-  
     </div>
 
         <div className="flex items-end justify-end gap-2 mt-5">
-         <Button variant="ghost" onClick={onCancel}>
+         <Button variant="ghost" type="button" onClick={onCancel}>
           Cancel
         </Button>
-      <Button onClick={handleSubmit}>
+      <Button type="button" onClick={handleSubmit}>
   {selectedDates.length === 0
     ? 'Keep Existing'
     : selectedDates.length === duplicateDates.length

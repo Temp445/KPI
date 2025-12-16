@@ -40,14 +40,12 @@ export default function PreviewTable({
 }: PreviewTableProps) {
   const [currentPage, setCurrentPage] = React.useState(1);
 
-  /* 🔹 Reset page when new data comes */
   React.useEffect(() => {
     setCurrentPage(1);
   }, [previewData]);
 
   if (!file || isManual || !previewData?.length) return null;
 
-  /* 🔹 Pagination calculations */
   const totalPages = Math.ceil(previewData.length / ITEMS_PER_PAGE);
 
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
@@ -72,6 +70,7 @@ export default function PreviewTable({
         <table className="w-full text-sm">
           <thead className="bg-gray-50 sticky top-0">
             <tr>
+              <th className="px-3 py-2 text-left">No</th>
               <th className="px-3 py-2 text-left">Date</th>
               <th className="px-3 py-2 text-right">Value</th>
               <th className="px-3 py-2 text-right">Goal</th>
@@ -84,6 +83,7 @@ export default function PreviewTable({
           <tbody>
             {currentRows.map((row, idx) => (
               <tr key={idx} className="border-t">
+                <td className="px-3 py-2"> {(currentPage - 1) * ITEMS_PER_PAGE + idx + 1}</td>
                 <td className="px-3 py-2">{row.date || "-"}</td>
                 <td className="px-3 py-2 text-right">{row.value ?? "-"}</td>
                 <td className="px-3 py-2 text-right">{row.goal ?? "-"}</td>

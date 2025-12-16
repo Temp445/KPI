@@ -98,7 +98,6 @@ export function Dashboard() {
           .select('*')
           .eq('category_id', category.id)
           .order('due_date')
-          .limit(2);
 
         const plans =
           actionPlans?.map((p: any) => ({
@@ -269,7 +268,9 @@ async function insertDataRows(data: WeeklyData[], metricId: string) {
 }
 
 // Import new data, checking for duplicates first
-const handleImportData = async (data: WeeklyData[]): Promise<ImportResult> => {
+const handleImportData = async (
+  data: WeeklyData[]
+): Promise<ImportResult> => {
   if (!user) {
     toast({
       title: "Not Logged In",
@@ -279,16 +280,19 @@ const handleImportData = async (data: WeeklyData[]): Promise<ImportResult> => {
     return { status: "error", error: "not_logged_in" };
   }
 
-  if (!selectedKPI || !activeMetricId) return { status: "error", error: "no_metric_selected" };
+  if (!selectedKPI || !activeMetricId) {
+    return { status: "error", error: "no_metric_selected" };
+  }
 
   try {
+    setLoading(true); 
+
     const metricId = activeMetricId;
 
-    // Normalize uploaded dates (YYYY-MM-DD)
-    const uploadedDates = data.map((d) => {
-      const dt = new Date(d.date);
-      return dt.toISOString().slice(0, 10);
-    });
+    // Normalize uploaded dates
+    const uploadedDates = data.map((d) =>
+      new Date(d.date).toISOString().slice(0, 10)
+    );
 
     const { data: existingDB, error: existingError } = await supabase
       .from("kpi_weekly_data")
@@ -301,23 +305,24 @@ const handleImportData = async (data: WeeklyData[]): Promise<ImportResult> => {
       new Date(r.date).toISOString().slice(0, 10)
     );
 
-    // Find duplicates (string compare)
-    const duplicates = uploadedDates.filter((date) => existingDates.includes(date));
+    const duplicates = uploadedDates.filter((d) =>
+      existingDates.includes(d)
+    );
 
     if (duplicates.length > 0) {
       return { status: "duplicates", duplicates, newData: data };
     }
 
-    // No duplicates -> insert all
     await insertDataRows(data, metricId);
 
+    await loadDashboardData();
+
     toast({
-      title: "Import Success",
-      description: "Excel imported to selected metric.",
+      title: "Import Successful",
+      description: "Data imported successfully.",
       variant: "success",
     });
 
-    await loadDashboardData();
     setImportDialogOpen(false);
     setSelectedKPI(null);
     setActiveMetricId(null);
@@ -325,15 +330,20 @@ const handleImportData = async (data: WeeklyData[]): Promise<ImportResult> => {
     return { status: "ok" };
   } catch (error) {
     console.error("Import error:", error);
+
     toast({
       title: "Import Failed",
-      description: error instanceof Error ? error.message : String(error),
+      description:
+        error instanceof Error ? error.message : String(error),
       variant: "destructive",
     });
+
     return { status: "error", error };
   } finally {
+    setLoading(false); 
   }
 };
+
 
 
 // Handle replacing duplicates in DB with uploaded data

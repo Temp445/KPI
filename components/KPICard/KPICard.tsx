@@ -29,16 +29,9 @@ export function KPICard({ data, onUpload }: KPICardProps) {
   const { filters } = useDashboardStore();
   const [activeSegment, setActiveSegment] = useState<number | null>(null);
   const [rotateEnabled, setRotateEnabled] = useState(true);
-  // const [selectedMetric, setSelectedMetric] = useState<string>(data.metricId ?? "");
+  const [selectedMetric, setSelectedMetric] = useState<string>(data.metricId ?? "");
   const [selectedChartData, setSelectedChartData] = useState(data.chartData);
 
-const [selectedMetric, setSelectedMetric] = useState<string>(() => {
-  return (
-    localStorage.getItem("selectedMetric") ||
-    data.metricId ||
-    ""
-  );
-});
 
   useEffect(() => {
     fetchMetricChartData(selectedMetric);
@@ -249,9 +242,9 @@ const [selectedMetric, setSelectedMetric] = useState<string>(() => {
             className="text-sm w-full border border-gray-300 rounded-md px-3 py-1.5"
             value={selectedMetric}
             onChange={(e) => {
-            const value = e.target.value;
-             setSelectedMetric(value);
-             localStorage.setItem("selectedMetric", value);
+              e.preventDefault();
+              setSelectedMetric(e.target.value);
+              fetchMetricChartData(e.target.value);
             }}
           >
             {data.metrics.allMetrics?.map(m => (
@@ -261,8 +254,8 @@ const [selectedMetric, setSelectedMetric] = useState<string>(() => {
         </div>
         
         {hasNoData ? (
-          <div className="text-center text-gray-500 py-10 text-sm">
-            No data available.
+          <div className=" flex  justify-center text-center items-center text-gray-500 py-10 text-sm h-[300px]">
+            Currently, no data is available based on the selected filters.
           </div>
         ) : (
           <KPIChart
@@ -284,8 +277,8 @@ const [selectedMetric, setSelectedMetric] = useState<string>(() => {
               <h4 className="text-sm font-medium">{data.metrics.secondary}</h4>
             </div>
             {hasNoData ? (
-          <div className="text-center text-gray-500 py-10 text-sm">
-            No data available.
+          <div className="flex items-center justify-center text-center text-gray-500 py-10 text-sm h-[300px]">
+            Currently, no data is available based on the selected filters.
           </div>
         ) : (
             <KPIChart

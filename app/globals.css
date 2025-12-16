@@ -91,3 +91,13 @@
 .no-spinner {
   -moz-appearance: textfield;
 }
+
+
+.section-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #334155 transparent;
+}
+
+.section-scroll:hover {
+  scrollbar-color: #1e293b transparent;
+}

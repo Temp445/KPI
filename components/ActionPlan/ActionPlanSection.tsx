@@ -64,7 +64,8 @@ export function ActionPlanSection({ actionPlans, counts }: ActionPlanSectionProp
           <div className="text-center">Status</div>
         </div>
 
-        {actionPlans.map((plan) => (
+        <div className='overflow-y-auto h-32 section-scroll'>
+          {actionPlans.map((plan) => (
           <div
             key={plan.id}
             className="grid grid-cols-3 gap-2 text-xs py-2 border-b border-gray-100 last:border-0"
@@ -84,9 +85,10 @@ export function ActionPlanSection({ actionPlans, counts }: ActionPlanSectionProp
             </div>
           </div>
         ))}
+        </div>
 
         {actionPlans.length === 0 && (
-          <div className="text-center py-4 text-sm text-gray-500">
+          <div className="text-center py-4 text-sm text-gray-500 h-32 flex items-center justify-center">
             No action plans available
           </div>
         )}
